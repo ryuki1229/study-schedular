@@ -1,11 +1,11 @@
 {
-  "name": "Route - 参考書スケジューラー",
+  "name": "Route - 学習ルート管理",
   "short_name": "Route",
-  "description": "参考書の学習範囲と復習日を自動管理",
+  "description": "参考書の計画、復習、終了見込み、間違い問題を管理",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f7fbff",
   "theme_color": "#1689f5",
   "lang": "ja",
   "icons": [

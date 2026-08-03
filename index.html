@@ -1,472 +1,365 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#1689f5" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
-  <title>Route</title>
-  <style>
-    :root {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color-scheme: light dark;
-      --accent: #1689f5;
-    }
-    * { box-sizing: border-box; }
-    body {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
-      line-height: 1.45;
-    }
-    h1 { font-size: 1.55rem; margin: 4px 0; }
-    h2 { font-size: 1.1rem; margin: 0 0 10px; }
-    .sub { opacity: .7; margin: 0 0 12px; }
-    .brand { display:flex; align-items:center; gap:10px; }
-    .brand img { width:42px; height:42px; border-radius:11px; }
-    .card {
-      border: 1px solid #8885;
-      border-radius: 16px;
-      padding: 14px;
-      margin: 12px 0;
-    }
-    .hidden { display: none !important; }
-    .tabs {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-      padding: 8px 0;
-      backdrop-filter: blur(12px);
-    }
-    button, input, select {
-      width: 100%;
-      border: 1px solid #8886;
-      border-radius: 10px;
-      padding: 10px;
-      font: inherit;
-    }
-    button { cursor: pointer; font-weight: 700; }
-    .tabs button { padding: 9px 5px; font-size: .86rem; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2,minmax(0,1fr));
-      gap: 10px;
-    }
-    label { display: block; font-size: .9rem; }
-    .task {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 11px 0;
-      border-bottom: 1px solid #8883;
-    }
-    .task:last-child { border-bottom: 0; }
-    .task input[type="checkbox"] {
-      width: 23px;
-      height: 23px;
-      flex: 0 0 auto;
-      margin-top: 2px;
-      accent-color: var(--accent);
-    }
-    .task-main { flex: 1; }
-    .task-title { font-weight: 750; }
-    .meta { opacity: .72; font-size: .86rem; }
-    .done .task-title, .done .meta { text-decoration: line-through; opacity: .48; }
-    .badge {
-      display: inline-block;
-      padding: 1px 7px;
-      border-radius: 999px;
-      border: 1px solid #8886;
-      font-size: .75rem;
-      margin-left: 5px;
-    }
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .summary > div {
-      border: 1px solid #8884;
-      border-radius: 12px;
-      padding: 10px;
-      text-align: center;
-    }
-    .summary strong { display: block; font-size: 1.25rem; }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
-    .toolbar button { width: auto; }
-    .book-row { padding: 13px 0; border-bottom: 1px solid #8883; }
-    .book-row:last-child { border-bottom: 0; }
-    .book-top { display:flex; justify-content:space-between; gap:10px; }
-    .actions { display:flex; gap:6px; }
-    .actions button { width:auto; padding:6px 9px; font-size:.8rem; }
-    .progress-track {
-      width:100%;
-      height:10px;
-      border-radius:999px;
-      background:#8883;
-      overflow:hidden;
-      margin:8px 0 5px;
-    }
-    .progress-fill {
-      height:100%;
-      border-radius:999px;
-      background:var(--accent);
-      transition:width .25s ease;
-    }
-    .remaining {
-      font-size:.84rem;
-      font-weight:650;
-    }
-    .calendar-head {
-      display: grid;
-      grid-template-columns: 44px 1fr 44px;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .calendar-head h2 { text-align:center; margin:0; }
-    .calendar-head button { padding:8px; }
-    .weekdays, .calendar-grid {
-      display:grid;
-      grid-template-columns: repeat(7,1fr);
-      gap:4px;
-    }
-    .weekdays div {
-      text-align:center;
-      font-size:.78rem;
-      opacity:.65;
-      padding:4px 0;
-    }
-    .day {
-      min-height: 76px;
-      border:1px solid #8884;
-      border-radius:10px;
-      padding:6px;
-      cursor:pointer;
-      overflow:hidden;
-    }
-    .day.out { opacity:.32; }
-    .day.today { outline:2px solid var(--accent); }
-    .day.selected { background: color-mix(in srgb, var(--accent) 16%, transparent); }
-    .date-num { font-size:.82rem; font-weight:700; }
-    .dot-row { display:flex; flex-wrap:wrap; gap:3px; margin-top:6px; }
-    .dot { width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:.75; }
-    .count { font-size:.72rem; opacity:.7; margin-top:4px; }
-    .empty { opacity:.65; padding:10px 0; }
-    .install { margin-top: 10px; border-style: dashed; }
-    @media (max-width:650px){
-      .grid{grid-template-columns:1fr}
-      .day{min-height:62px;padding:5px}
-      .tabs{grid-template-columns:repeat(5,1fr)}
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1689f5">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Route</title>
+<style>
+:root{
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color-scheme:light dark;
+  --accent:#1689f5;
+  --accent2:#73c7ff;
+  --card:rgba(255,255,255,.82);
+  --line:rgba(30,64,175,.13);
+  --text:#172033;
+  --muted:#64748b;
+}
+*{box-sizing:border-box}
+body{
+  max-width:1000px;margin:0 auto;padding:14px 12px calc(28px + env(safe-area-inset-bottom));
+  line-height:1.45;color:var(--text);
+  background:
+    radial-gradient(circle at 10% 0%,rgba(115,199,255,.30),transparent 35%),
+    radial-gradient(circle at 90% 15%,rgba(22,137,245,.18),transparent 35%),
+    repeating-linear-gradient(0deg,transparent 0,transparent 31px,var(--line) 32px),
+    linear-gradient(180deg,#f7fbff,#edf7ff 55%,#f8fbff);
+  min-height:100vh;
+}
+@media(prefers-color-scheme:dark){
+  :root{--card:rgba(17,28,47,.84);--line:rgba(115,199,255,.08);--text:#eef5ff;--muted:#a8b6c8}
+  body{background:
+    radial-gradient(circle at 10% 0%,rgba(22,137,245,.24),transparent 38%),
+    radial-gradient(circle at 90% 15%,rgba(115,199,255,.12),transparent 35%),
+    repeating-linear-gradient(0deg,transparent 0,transparent 31px,var(--line) 32px),
+    linear-gradient(180deg,#08111f,#0f1b2c 60%,#091321)}
+}
+h1{font-size:1.6rem;margin:0}
+h2{font-size:1.1rem;margin:0 0 10px}
+h3{font-size:1rem;margin:14px 0 8px}
+.brand{display:flex;align-items:center;gap:10px;margin:2px 2px 10px}
+.brand img{width:46px;height:46px;border-radius:13px;box-shadow:0 8px 22px rgba(22,137,245,.25)}
+.sub{margin:0;color:var(--muted);font-size:.9rem}
+.card{background:var(--card);backdrop-filter:blur(12px);border:1px solid rgba(120,160,210,.22);border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 10px 28px rgba(31,75,125,.08)}
+.hidden{display:none!important}
+.tabs{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:8px 0;background:linear-gradient(180deg,rgba(247,251,255,.94),rgba(247,251,255,.70),transparent);backdrop-filter:blur(8px)}
+@media(prefers-color-scheme:dark){.tabs{background:linear-gradient(180deg,rgba(8,17,31,.95),rgba(8,17,31,.72),transparent)}}
+button,input,select,textarea{width:100%;border:1px solid rgba(100,130,170,.38);border-radius:11px;padding:10px;font:inherit;color:inherit;background:rgba(255,255,255,.55)}
+@media(prefers-color-scheme:dark){button,input,select,textarea{background:rgba(255,255,255,.05)}}
+button{cursor:pointer;font-weight:700}
+button.primary{background:linear-gradient(135deg,var(--accent),#4aaeff);color:white;border:none}
+.tabs button{padding:9px 4px;font-size:.79rem}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label{display:block;font-size:.88rem}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.summary>div{border:1px solid rgba(100,140,190,.22);border-radius:13px;padding:10px;text-align:center;background:rgba(255,255,255,.28)}
+.summary strong{display:block;font-size:1.25rem}
+.progress-track{height:10px;border-radius:999px;background:rgba(100,130,170,.18);overflow:hidden;margin:7px 0 5px}
+.progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:.25s}
+.task{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid rgba(120,150,190,.18)}
+.task:last-child{border-bottom:0}
+.task input[type=checkbox]{width:23px;height:23px;flex:0 0 auto;margin-top:2px;accent-color:var(--accent)}
+.task-main{flex:1}
+.task-title{font-weight:750}
+.meta{color:var(--muted);font-size:.84rem}
+.done .task-title,.done .meta{text-decoration:line-through;opacity:.55}
+.badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px solid rgba(100,140,190,.35);font-size:.72rem;margin-left:5px}
+.status-ok{color:#15803d;font-weight:700}.status-warn{color:#c2410c;font-weight:700}.status-bad{color:#b91c1c;font-weight:700}
+.book-row,.mistake-row,.route-row{padding:13px 0;border-bottom:1px solid rgba(120,150,190,.18)}
+.book-row:last-child,.mistake-row:last-child,.route-row:last-child{border-bottom:0}
+.book-top{display:flex;justify-content:space-between;gap:10px}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.actions button{width:auto;padding:6px 9px;font-size:.78rem}
+.calendar-head{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin-bottom:10px}
+.calendar-head h2{text-align:center;margin:0}
+.weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.weekdays div{text-align:center;font-size:.75rem;color:var(--muted)}
+.day{min-height:72px;border:1px solid rgba(100,140,190,.22);border-radius:10px;padding:6px;cursor:pointer;background:rgba(255,255,255,.20)}
+.day.out{opacity:.35}.day.today{outline:2px solid var(--accent)}.day.selected{background:rgba(22,137,245,.12)}
+.date-num{font-size:.8rem;font-weight:700}.dot-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}.dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}.count{font-size:.68rem;color:var(--muted);margin-top:3px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{width:auto}
+.empty{color:var(--muted);padding:10px 0}
+.advice{border-left:4px solid var(--accent);padding-left:10px}
+.ai-box{display:flex;gap:8px}.ai-box input{flex:1}.ai-box button{width:auto}
+.chat{max-height:360px;overflow:auto}.bubble{padding:10px 12px;border-radius:14px;margin:8px 0;white-space:pre-wrap}.user{margin-left:15%;background:rgba(22,137,245,.15)}.assistant{margin-right:8%;background:rgba(100,130,170,.13)}
+.small{font-size:.78rem}
+@media(max-width:700px){
+ .grid{grid-template-columns:1fr}
+ .summary{grid-template-columns:repeat(2,1fr)}
+ .tabs{grid-template-columns:repeat(3,1fr)}
+ .day{min-height:59px;padding:4px}
+ .book-top{flex-direction:column}
+}
+</style>
 </head>
 <body>
-  <div class="brand">
-    <img src="icon-192.png" alt="">
-    <div>
-      <h1>Route</h1>
-      <p class="sub">参考書の学習ルートを自動管理</p>
-    </div>
-  </div>
+<div class="brand"><img src="icon-192.png" alt=""><div><h1>Route</h1><p class="sub">計画・復習・弱点管理をひとつに</p></div></div>
 
-  <div class="tabs">
-    <button onclick="showView('todayView')">今日</button>
-    <button onclick="showView('calendarView')">カレンダー</button>
-    <button onclick="showView('upcomingView')">今後</button>
-    <button onclick="showView('booksView')">参考書</button>
-    <button onclick="showView('addView')">＋追加</button>
-  </div>
+<div class="tabs">
+<button onclick="showView('todayView')">今日</button>
+<button onclick="showView('calendarView')">カレンダー</button>
+<button onclick="showView('booksView')">参考書</button>
+<button onclick="showView('mistakesView')">間違い</button>
+<button onclick="showView('advisorView')">相談</button>
+<button onclick="showView('addView')">＋追加</button>
+</div>
 
-  <section class="card" id="todayView">
-    <h2>今日やること</h2>
-    <div class="summary">
-      <div><strong id="todayCount">0</strong>今日</div>
-      <div><strong id="overdueCount">0</strong>未完了</div>
-      <div><strong id="doneCount">0</strong>完了</div>
-    </div>
-    <div id="overdueWrap">
-      <h2>期限を過ぎた未完了</h2>
-      <div id="overdueTasks"></div>
-    </div>
-    <h2>本日の予定</h2>
-    <div id="todayTasks"></div>
-  </section>
+<section class="card" id="todayView">
+<h2>今日の学習</h2>
+<div class="summary">
+<div><strong id="todayCount">0</strong>予定</div>
+<div><strong id="doneCount">0</strong>完了</div>
+<div><strong id="todayRate">0%</strong>達成率</div>
+<div><strong id="overdueCount">0</strong>未完了</div>
+</div>
+<div class="progress-track"><div class="progress-fill" id="todayProgress" style="width:0%"></div></div>
+<div id="mainAdvice" class="card advice"></div>
+<h3>期限を過ぎた未完了</h3><div id="overdueTasks"></div>
+<h3>本日の予定</h3><div id="todayTasks"></div>
+<h3>今日の間違い復習</h3><div id="todayMistakes"></div>
+</section>
 
-  <section class="card hidden" id="calendarView">
-    <div class="calendar-head">
-      <button onclick="changeMonth(-1)">‹</button>
-      <h2 id="calendarTitle"></h2>
-      <button onclick="changeMonth(1)">›</button>
-    </div>
-    <div class="weekdays">
-      <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
-    </div>
-    <div class="calendar-grid" id="calendarGrid"></div>
-    <div class="card" style="margin-bottom:0">
-      <h2 id="selectedDateTitle">選択日の予定</h2>
-      <div id="selectedDateTasks"></div>
-    </div>
-  </section>
+<section class="card hidden" id="calendarView">
+<div class="calendar-head"><button onclick="changeMonth(-1)">‹</button><h2 id="calendarTitle"></h2><button onclick="changeMonth(1)">›</button></div>
+<div class="weekdays"><div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div></div>
+<div class="calendar-grid" id="calendarGrid"></div>
+<div class="card"><h2 id="selectedDateTitle"></h2><div id="selectedDateTasks"></div></div>
+</section>
 
-  <section class="card hidden" id="upcomingView">
-    <h2>今後の予定</h2>
-    <div id="upcomingTasks"></div>
-  </section>
+<section class="card hidden" id="booksView">
+<h2>参考書と終了見込み</h2>
+<div id="bookList"></div>
+<div class="toolbar" style="margin-top:12px">
+<button onclick="exportData()">バックアップ保存</button>
+<button onclick="importFile.click()">バックアップ読込</button>
+<input class="hidden" id="importFile" type="file" accept="application/json">
+</div>
+</section>
 
-  <section class="card hidden" id="booksView">
-    <h2>登録済み参考書</h2>
-    <div id="bookList"></div>
-    <div class="toolbar" style="margin-top:12px">
-      <button onclick="exportData()">バックアップ保存</button>
-      <button onclick="document.getElementById('importFile').click()">バックアップ読込</button>
-      <input class="hidden" id="importFile" type="file" accept="application/json" />
-    </div>
-    <div class="card install">
-      <strong>アプリとして使う</strong>
-      <div class="meta">ブラウザの「ホーム画面に追加」または「アプリをインストール」を使ってください。</div>
-      <button id="installButton" class="hidden" style="margin-top:10px">Routeをインストール</button>
-    </div>
-  </section>
+<section class="card hidden" id="mistakesView">
+<h2>間違い問題ノート</h2>
+<div class="grid">
+<label>参考書<select id="mistakeBook"></select></label>
+<label>問題番号<input id="mistakeProblem" placeholder="例：例題42"></label>
+<label>分野<input id="mistakeTopic" placeholder="例：三角関数"></label>
+<label>間違えた理由
+<select id="mistakeReason"><option>解法が思いつかなかった</option><option>知識不足</option><option>計算ミス</option><option>読み違い</option><option>時間不足</option><option>その他</option></select>
+</label>
+<label>重要度<select id="mistakePriority"><option>高</option><option selected>中</option><option>低</option></select></label>
+<label>次回復習日<input id="mistakeReview" type="date"></label>
+<label style="grid-column:1/-1">メモ<textarea id="mistakeMemo" rows="3" placeholder="どこで止まったか、次回の注意点"></textarea></label>
+</div>
+<button class="primary" style="margin-top:10px" onclick="addMistake()">間違いを登録</button>
+<h3>未克服の問題</h3><div id="mistakeList"></div>
+</section>
 
-  <section class="card hidden" id="addView">
-    <h2>参考書を登録</h2>
-    <div class="grid">
-      <label>参考書名
-        <input id="bookName" placeholder="例：一対一対応 数Ⅲ" />
-      </label>
-      <label>科目
-        <select id="subject">
-          <option>数学</option><option>英語</option><option>物理</option>
-          <option>化学</option><option>国語</option><option>社会</option>
-          <option>情報</option><option>その他</option>
-        </select>
-      </label>
-      <label>単位
-        <select id="unit">
-          <option>ページ</option><option>問題</option><option>講</option>
-          <option>Lesson</option><option>No.</option><option>章</option>
-        </select>
-      </label>
-      <label>開始番号
-        <input id="startNo" type="number" min="1" value="1" />
-      </label>
-      <label>終了番号
-        <input id="endNo" type="number" min="1" placeholder="例：320" />
-      </label>
-      <label>1日に進める量
-        <input id="dailyAmount" type="number" min="1" placeholder="例：15" />
-      </label>
-      <label>開始日
-        <input id="startDate" type="date" />
-      </label>
-      <label>学習・復習サイクル
-        <select id="cycle">
-          <option value="4-2">4日進める → 2日復習</option>
-        </select>
-      </label>
-    </div>
-    <button style="margin-top:12px" id="addBook">全予定を自動作成</button>
-  </section>
+<section class="card hidden" id="advisorView">
+<h2>Route相談 β</h2>
+<p class="meta">現段階では端末内の進捗を使った自動分析です。本物の生成AI接続は次段階で追加できます。</p>
+<div class="chat" id="chat"></div>
+<div class="ai-box"><input id="advisorInput" placeholder="例：予定に間に合う？ 今日何を優先？"><button class="primary" onclick="askAdvisor()">相談</button></div>
+<div class="toolbar" style="margin-top:8px">
+<button onclick="quickAsk('予定に間に合う？')">予定に間に合う？</button>
+<button onclick="quickAsk('今日何を優先？')">今日何を優先？</button>
+<button onclick="quickAsk('弱点を教えて')">弱点を教えて</button>
+</div>
+</section>
+
+<section class="card hidden" id="addView">
+<h2>参考書を登録</h2>
+<div class="grid">
+<label>参考書名<input id="bookName" placeholder="例：一対一対応 数Ⅲ"></label>
+<label>科目<select id="subject"><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>社会</option><option>情報</option><option>その他</option></select></label>
+<label>単位<select id="unit"><option>ページ</option><option>問題</option><option>講</option><option>Lesson</option><option>No.</option><option>章</option></select></label>
+<label>開始番号<input id="startNo" type="number" value="1" min="1"></label>
+<label>終了番号<input id="endNo" type="number" min="1"></label>
+<label>1日に進める量<input id="dailyAmount" type="number" min="1"></label>
+<label>開始日<input id="startDate" type="date"></label>
+<label>目標終了日<input id="targetDate" type="date"></label>
+<label style="grid-column:1/-1">参考書メモ<textarea id="bookMemo" rows="2" placeholder="進め方、注意点、使用目的など"></textarea></label>
+</div>
+<button class="primary" style="margin-top:10px" onclick="addBook()">全予定を自動作成</button>
+</section>
 
 <script>
-const STORAGE_KEY = "study_scheduler_pwa_v1";
-let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"books":[],"tasks":[]}');
-let calendarCursor = new Date();
-let selectedDate = localDateString();
-let deferredPrompt = null;
+const KEY="study_scheduler_pwa_v1";
+let state=JSON.parse(localStorage.getItem(KEY)||'{"books":[],"tasks":[],"mistakes":[],"chat":[]}');
+if(!state.mistakes)state.mistakes=[];
+if(!state.chat)state.chat=[];
+let selectedDate=localDateString(),calendarCursor=new Date();
 
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function localDateString(date=new Date()){
-  const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0");
-  return `${y}-${m}-${d}`;
-}
-function addDays(dateStr, days){
-  const d=new Date(dateStr+"T00:00:00");
-  d.setDate(d.getDate()+days);
-  return localDateString(d);
-}
-function formatRange(unit,start,end){
-  const prefix=unit==="ページ"?"P.":unit;
-  return start===end?`${prefix}${start}`:`${prefix}${start}〜${end}`;
-}
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function localDateString(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function parseDate(s){return new Date(s+"T00:00:00")}
+function addDays(s,n){let d=parseDate(s);d.setDate(d.getDate()+n);return localDateString(d)}
+function daysBetween(a,b){return Math.ceil((parseDate(b)-parseDate(a))/86400000)}
+function formatRange(u,s,e){let p=u==="ページ"?"P.":u;return s===e?`${p}${s}`:`${p}${s}〜${e}`}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
 function generateSchedule(book){
-  let current=book.startNo, dayOffset=0;
-  const tasks=[];
-  while(current<=book.endNo){
-    const blocks=[];
-    for(let i=0;i<4 && current<=book.endNo;i++){
-      const start=current, end=Math.min(current+book.dailyAmount-1,book.endNo);
-      blocks.push({start,end});
-      tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"学習",start,end,done:false});
-      current=end+1;
-    }
-    const fullStart=blocks[0].start, fullEnd=blocks[blocks.length-1].end;
-    const split=fullStart+Math.ceil((fullEnd-fullStart+1)/2)-1;
-    tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"復習",start:fullStart,end:split,done:false});
-    if(split<fullEnd){
-      tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"復習",start:split+1,end:fullEnd,done:false});
-    }
+ let current=book.startNo,offset=0,tasks=[];
+ while(current<=book.endNo){
+  let blocks=[];
+  for(let i=0;i<4&&current<=book.endNo;i++){
+   let start=current,end=Math.min(current+book.dailyAmount-1,book.endNo);
+   blocks.push({start,end});
+   tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"学習",start,end,done:false,note:""});
+   current=end+1;
   }
-  return tasks;
+  let fs=blocks[0].start,fe=blocks[blocks.length-1].end,split=fs+Math.ceil((fe-fs+1)/2)-1;
+  tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"復習",start:fs,end:split,done:false,note:""});
+  if(split<fe)tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"復習",start:split+1,end:fe,done:false,note:""});
+ }
+ return tasks;
 }
-function renderTask(task){
-  const book=state.books.find(b=>b.id===task.bookId);
-  if(!book)return "";
-  return `<div class="task ${task.done?"done":""}">
-    <input type="checkbox" ${task.done?"checked":""} onchange="toggleTask('${task.id}')">
-    <div class="task-main">
-      <div class="task-title">${book.name}｜${formatRange(book.unit,task.start,task.end)}
-        <span class="badge">${task.type}</span>
-      </div>
-      <div class="meta">${task.date}・${book.subject}</div>
-    </div>
-  </div>`;
+function getBookStats(book){
+ let study=state.tasks.filter(t=>t.bookId===book.id&&t.type==="学習").sort((a,b)=>a.date.localeCompare(b.date));
+ let done=study.filter(t=>t.done);
+ let completedUnits=done.reduce((sum,t)=>sum+(t.end-t.start+1),0);
+ let total=book.endNo-book.startNo+1;
+ completedUnits=Math.min(total,completedUnits);
+ let percent=total?Math.round(completedUnits/total*100):0;
+ let last14=done.filter(t=>daysBetween(t.date,localDateString())<=14);
+ let firstDate=done.length?done[0].date:book.startDate;
+ let elapsed=Math.max(1,daysBetween(firstDate,localDateString())+1);
+ let pace14=last14.reduce((s,t)=>s+(t.end-t.start+1),0)/14;
+ let overall=completedUnits/elapsed;
+ let pace=Math.max(pace14,overall,book.dailyAmount*4/6*.5);
+ let remaining=Math.max(0,total-completedUnits);
+ let estDays=remaining===0?0:Math.ceil(remaining/Math.max(.1,pace));
+ let estimated=addDays(localDateString(),estDays);
+ let target=book.targetDate||"";
+ let delta=target?daysBetween(target,estimated):0;
+ return {completedUnits,total,percent,pace,remaining,estimated,target,delta};
 }
-function getBookProgress(book){
-  const studyTasks=state.tasks.filter(t=>t.bookId===book.id && t.type==="学習");
-  const completedStudy=studyTasks.filter(t=>t.done);
-  const lastCompleted=completedStudy.length ? Math.max(...completedStudy.map(t=>t.end)) : book.startNo-1;
-  const totalUnits=book.endNo-book.startNo+1;
-  const completedUnits=Math.max(0, Math.min(totalUnits,lastCompleted-book.startNo+1));
-  const percent=totalUnits ? Math.round(completedUnits/totalUnits*100) : 0;
-  const nextStart=Math.min(book.endNo,lastCompleted+1);
-  const remaining=Math.max(0,book.endNo-lastCompleted);
-  return {percent,lastCompleted,nextStart,remaining,totalUnits};
+function statusText(s){
+ if(!s.target)return `<span class="meta">目標終了日なし</span>`;
+ if(s.remaining===0)return `<span class="status-ok">完了</span>`;
+ if(s.delta<=0)return `<span class="status-ok">目標より${Math.abs(s.delta)}日早い見込み</span>`;
+ if(s.delta<=7)return `<span class="status-warn">${s.delta}日遅れる見込み</span>`;
+ return `<span class="status-bad">${s.delta}日遅れる見込み</span>`;
+}
+function suggestion(book,s){
+ if(!s.target||s.delta<=0||s.remaining===0)return "現在のペースで問題ありません。";
+ let daysLeft=Math.max(1,daysBetween(localDateString(),s.target));
+ let needed=Math.ceil(s.remaining/daysLeft*6/4);
+ return `目標日に合わせるには、学習日の量を約${needed}${book.unit}にすると間に合う見込みです。`;
+}
+function renderTask(t){
+ let b=state.books.find(x=>x.id===t.bookId);if(!b)return"";
+ return `<div class="task ${t.done?"done":""}">
+ <input type="checkbox" ${t.done?"checked":""} onchange="toggleTask('${t.id}')">
+ <div class="task-main"><div class="task-title">${esc(b.name)}｜${formatRange(b.unit,t.start,t.end)}<span class="badge">${t.type}</span></div>
+ <div class="meta">${t.date}・${b.subject}${t.note?"・"+esc(t.note):""}</div>
+ <button class="small" style="width:auto;margin-top:5px" onclick="editTaskNote('${t.id}')">メモ</button></div></div>`;
+}
+function renderMistake(m){
+ let b=state.books.find(x=>x.id===m.bookId);
+ return `<div class="mistake-row"><div><strong>${esc(b?.name||"未設定")} ${esc(m.problem)}</strong><span class="badge">${esc(m.priority)}</span></div>
+ <div class="meta">${esc(m.topic)}・${esc(m.reason)}・復習 ${m.reviewDate}</div>
+ ${m.memo?`<div class="small">${esc(m.memo)}</div>`:""}
+ <div class="actions" style="margin-top:7px"><button onclick="masterMistake('${m.id}')">${m.mastered?"未克服に戻す":"克服済みにする"}</button><button onclick="deleteMistake('${m.id}')">削除</button></div></div>`;
+}
+function buildMainAdvice(){
+ let books=state.books.map(b=>({b,s:getBookStats(b)})).filter(x=>x.s.remaining>0);
+ let worst=books.sort((a,b)=>b.s.delta-a.s.delta)[0];
+ if(!worst)return "参考書を登録すると、進み具合から終了見込みを計算します。";
+ if(worst.s.target&&worst.s.delta>0)return `<strong>${esc(worst.b.name)}</strong>が目標より${worst.s.delta}日遅れる見込みです。<br>${suggestion(worst.b,worst.s)}`;
+ return `<strong>${esc(worst.b.name)}</strong>は現在${worst.s.percent}%です。終了見込みは${worst.s.estimated}です。`;
 }
 function render(){
-  const today=localDateString();
-  const todayTasks=state.tasks.filter(t=>t.date===today);
-  const overdue=state.tasks.filter(t=>t.date<today&&!t.done);
-  const upcoming=state.tasks.filter(t=>t.date>today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,90);
+ let today=localDateString();
+ let todays=state.tasks.filter(t=>t.date===today),over=state.tasks.filter(t=>t.date<today&&!t.done);
+ let done=todays.filter(t=>t.done).length,rate=todays.length?Math.round(done/todays.length*100):0;
+ todayCount.textContent=todays.length;doneCount.textContent=done;todayRate.textContent=rate+"%";overdueCount.textContent=over.length;todayProgress.style.width=rate+"%";
+ mainAdvice.innerHTML=buildMainAdvice();
+ todayTasks.innerHTML=todays.length?todays.map(renderTask).join(""):'<div class="empty">今日の予定はありません。</div>';
+ overdueTasks.innerHTML=over.length?over.map(renderTask).join(""):'<div class="empty">未完了はありません。</div>';
+ let review=state.mistakes.filter(m=>!m.mastered&&m.reviewDate<=today);
+ todayMistakes.innerHTML=review.length?review.map(renderMistake).join(""):'<div class="empty">今日の復習対象はありません。</div>';
 
-  todayCount.textContent=todayTasks.length;
-  overdueCount.textContent=overdue.length;
-  doneCount.textContent=todayTasks.filter(t=>t.done).length;
-  todayTasksEl.innerHTML=todayTasks.length?todayTasks.map(renderTask).join(""):'<div class="empty">今日の予定はありません。</div>';
-  overdueTasks.innerHTML=overdue.length?overdue.map(renderTask).join(""):'<div class="empty">未完了はありません。</div>';
-  upcomingTasks.innerHTML=upcoming.length?upcoming.map(renderTask).join(""):'<div class="empty">今後の予定はありません。</div>';
+ bookList.innerHTML=state.books.length?state.books.map(b=>{
+  let s=getBookStats(b);
+  return `<div class="book-row"><div class="book-top"><div style="flex:1"><strong>${esc(b.name)}</strong>
+  <div class="meta">${b.subject}・${formatRange(b.unit,b.startNo,b.endNo)}・目標 ${b.targetDate||"未設定"}</div>
+  <div class="progress-track"><div class="progress-fill" style="width:${s.percent}%"></div></div>
+  <div><strong>${s.percent}%</strong>・残り${s.remaining}${b.unit}・終了見込み ${s.estimated}</div>
+  <div>${statusText(s)}</div><div class="small">${suggestion(b,s)}</div>${b.memo?`<div class="meta">メモ：${esc(b.memo)}</div>`:""}</div>
+  <div class="actions"><button onclick="editBook('${b.id}')">編集</button><button onclick="showBook('${b.id}')">予定</button><button onclick="deleteBook('${b.id}')">削除</button></div></div></div>`;
+ }).join(""):'<div class="empty">参考書は未登録です。</div>';
 
-  bookList.innerHTML=state.books.length?state.books.map(book=>{
-    const tasks=state.tasks.filter(t=>t.bookId===book.id);
-    const checked=tasks.filter(t=>t.done).length;
-    const p=getBookProgress(book);
-    const remainingText=p.remaining===0
-      ? "学習範囲は完了"
-      : `残り ${p.remaining}${book.unit}（次は${formatRange(book.unit,p.nextStart,Math.min(p.nextStart+book.dailyAmount-1,book.endNo))}）`;
-    return `<div class="book-row">
-      <div class="book-top">
-        <div style="flex:1">
-          <strong>${book.name}</strong>
-          <div class="meta">${book.subject}・${formatRange(book.unit,book.startNo,book.endNo)}・1日${book.dailyAmount}${book.unit}</div>
-          <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
-          <div class="remaining">${p.percent}%・${remainingText}</div>
-          <div class="meta">予定チェック ${checked}/${tasks.length}</div>
-        </div>
-        <div class="actions">
-          <button onclick="showBookSchedule('${book.id}')">予定</button>
-          <button onclick="deleteBook('${book.id}')">削除</button>
-        </div>
-      </div>
-    </div>`;
-  }).join(""):'<div class="empty">まだ参考書が登録されていません。</div>';
-
-  renderCalendar();
-  renderSelectedDate();
-  save();
+ mistakeBook.innerHTML='<option value="">参考書を選択</option>'+state.books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
+ mistakeList.innerHTML=state.mistakes.filter(m=>!m.mastered).length?state.mistakes.filter(m=>!m.mastered).map(renderMistake).join(""):'<div class="empty">未克服の問題はありません。</div>';
+ renderCalendar();renderSelectedDate();renderChat();save();
 }
 function renderCalendar(){
-  const y=calendarCursor.getFullYear(), m=calendarCursor.getMonth();
-  calendarTitle.textContent=`${y}年 ${m+1}月`;
-  const first=new Date(y,m,1);
-  const start=new Date(y,m,1-first.getDay());
-  const cells=[];
-  for(let i=0;i<42;i++){
-    const d=new Date(start); d.setDate(start.getDate()+i);
-    const ds=localDateString(d);
-    const tasks=state.tasks.filter(t=>t.date===ds);
-    const cls=["day"];
-    if(d.getMonth()!==m)cls.push("out");
-    if(ds===localDateString())cls.push("today");
-    if(ds===selectedDate)cls.push("selected");
-    cells.push(`<div class="${cls.join(" ")}" onclick="selectDate('${ds}')">
-      <div class="date-num">${d.getDate()}</div>
-      <div class="dot-row">${tasks.slice(0,5).map(()=>'<span class="dot"></span>').join("")}</div>
-      ${tasks.length?`<div class="count">${tasks.filter(t=>t.done).length}/${tasks.length}</div>`:""}
-    </div>`);
-  }
-  calendarGrid.innerHTML=cells.join("");
+ let y=calendarCursor.getFullYear(),m=calendarCursor.getMonth();calendarTitle.textContent=`${y}年 ${m+1}月`;
+ let first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),cells=[];
+ for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let ds=localDateString(d),ts=state.tasks.filter(t=>t.date===ds);
+ let cls=["day"];if(d.getMonth()!==m)cls.push("out");if(ds===localDateString())cls.push("today");if(ds===selectedDate)cls.push("selected");
+ cells.push(`<div class="${cls.join(" ")}" onclick="selectDate('${ds}')"><div class="date-num">${d.getDate()}</div><div class="dot-row">${ts.slice(0,5).map(()=>'<span class="dot"></span>').join("")}</div>${ts.length?`<div class="count">${ts.filter(t=>t.done).length}/${ts.length}</div>`:""}</div>`)}
+ calendarGrid.innerHTML=cells.join("");
 }
-function renderSelectedDate(){
-  const tasks=state.tasks.filter(t=>t.date===selectedDate);
-  selectedDateTitle.textContent=`${selectedDate} の予定`;
-  selectedDateTasks.innerHTML=tasks.length?tasks.map(renderTask).join(""):'<div class="empty">この日の予定はありません。</div>';
+function renderSelectedDate(){let ts=state.tasks.filter(t=>t.date===selectedDate);selectedDateTitle.textContent=`${selectedDate} の予定`;selectedDateTasks.innerHTML=ts.length?ts.map(renderTask).join(""):'<div class="empty">予定はありません。</div>'}
+function renderChat(){chat.innerHTML=state.chat.map(x=>`<div class="bubble ${x.role}">${esc(x.text)}</div>`).join("");chat.scrollTop=chat.scrollHeight}
+function advisorAnswer(q){
+ let lower=q.toLowerCase(),books=state.books.map(b=>({b,s:getBookStats(b)}));
+ if(!books.length)return "まず参考書を登録してください。進捗と目標日から提案できるようになります。";
+ if(q.includes("間に合")||q.includes("予定")){
+  let late=books.filter(x=>x.s.target&&x.s.delta>0).sort((a,b)=>b.s.delta-a.s.delta);
+  if(!late.length)return "現在、目標日が設定されている参考書はすべて予定内です。";
+  return late.map(x=>`${x.b.name}：${x.s.delta}日遅れる見込み。\n${suggestion(x.b,x.s)}`).join("\n\n");
+ }
+ if(q.includes("優先")||q.includes("今日")){
+  let overdue=state.tasks.filter(t=>t.date<localDateString()&&!t.done);
+  if(overdue.length){let names=[...new Set(overdue.map(t=>state.books.find(b=>b.id===t.bookId)?.name).filter(Boolean))];return `まず期限切れの${overdue.length}件を優先してください。\n対象：${names.join("、")}`;}
+  let worst=books.sort((a,b)=>b.s.delta-a.s.delta)[0];
+  return `${worst.b.name}を優先するとよいです。現在${worst.s.percent}%、終了見込みは${worst.s.estimated}です。`;
+ }
+ if(q.includes("弱点")||q.includes("間違")){
+  let active=state.mistakes.filter(m=>!m.mastered);if(!active.length)return "未克服として登録された間違い問題はありません。";
+  let count={};active.forEach(m=>count[m.topic]=(count[m.topic]||0)+1);
+  let top=Object.entries(count).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  return "現在の弱点候補：\n"+top.map(([k,v])=>`・${k}（${v}件）`).join("\n");
+ }
+ return "進捗については「予定に間に合う？」「今日何を優先？」「弱点を教えて」のように聞いてください。今後、本物のAI接続で自由相談と類題生成に拡張できます。";
 }
-window.selectDate=function(ds){ selectedDate=ds; renderCalendar(); renderSelectedDate(); };
-window.changeMonth=function(delta){ calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+delta,1); renderCalendar(); };
-window.toggleTask=function(id){ const t=state.tasks.find(t=>t.id===id); if(t)t.done=!t.done; render(); };
-window.deleteBook=function(id){
-  if(!confirm("この参考書と全予定を削除しますか？"))return;
-  state.books=state.books.filter(b=>b.id!==id);
-  state.tasks=state.tasks.filter(t=>t.bookId!==id);
-  render();
-};
-window.showBookSchedule=function(id){
-  const book=state.books.find(b=>b.id===id);
-  const tasks=state.tasks.filter(t=>t.bookId===id).sort((a,b)=>a.date.localeCompare(b.date));
-  showView("upcomingView");
-  document.querySelector("#upcomingView h2").textContent=book.name+" の予定";
-  upcomingTasks.innerHTML=tasks.map(renderTask).join("");
-};
-window.showView=function(id){
-  ["todayView","calendarView","upcomingView","booksView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
-  if(id==="upcomingView"){
-    document.querySelector("#upcomingView h2").textContent="今後の予定";
-    const today=localDateString();
-    const upcoming=state.tasks.filter(t=>t.date>today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,90);
-    upcomingTasks.innerHTML=upcoming.length?upcoming.map(renderTask).join(""):'<div class="empty">今後の予定はありません。</div>';
-  }
-};
-addBook.addEventListener("click",()=>{
-  const name=bookName.value.trim(), subject=document.getElementById("subject").value, unit=document.getElementById("unit").value;
-  const startNo=Number(document.getElementById("startNo").value), endNo=Number(document.getElementById("endNo").value);
-  const dailyAmount=Number(document.getElementById("dailyAmount").value), startDate=document.getElementById("startDate").value;
-  if(!name||!startDate||!startNo||!endNo||!dailyAmount){alert("すべて入力してください。");return;}
-  if(endNo<startNo){alert("終了番号は開始番号以上にしてください。");return;}
-  const book={id:crypto.randomUUID(),name,subject,unit,startNo,endNo,dailyAmount,startDate};
-  state.books.push(book); state.tasks.push(...generateSchedule(book)); save(); render(); showView("todayView");
-  bookName.value=""; document.getElementById("endNo").value=""; document.getElementById("dailyAmount").value="";
-});
-window.exportData=function(){
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="route-backup.json"; a.click(); URL.revokeObjectURL(a.href);
-};
-importFile.addEventListener("change",async e=>{
-  const file=e.target.files[0]; if(!file)return;
-  try{
-    const imported=JSON.parse(await file.text());
-    if(!imported.books||!imported.tasks)throw new Error();
-    state=imported; render(); alert("バックアップを読み込みました。");
-  }catch{alert("読み込めないファイルです。");}
-});
-window.addEventListener("beforeinstallprompt",e=>{
-  e.preventDefault(); deferredPrompt=e; installButton.classList.remove("hidden");
-});
-installButton.addEventListener("click",async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
-  deferredPrompt=null;
-  installButton.classList.add("hidden");
-});
-const todayTasksEl=document.getElementById("todayTasks");
-document.getElementById("startDate").value=localDateString();
-if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js")); }
+
+window.showView=id=>["todayView","calendarView","booksView","mistakesView","advisorView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
+window.changeMonth=n=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+n,1);renderCalendar()}
+window.selectDate=s=>{selectedDate=s;renderCalendar();renderSelectedDate()}
+window.toggleTask=id=>{let t=state.tasks.find(x=>x.id===id);if(t)t.done=!t.done;render()}
+window.editTaskNote=id=>{let t=state.tasks.find(x=>x.id===id);let n=prompt("この学習のメモ",t.note||"");if(n!==null){t.note=n;render()}}
+window.addBook=()=>{
+ let name=bookName.value.trim(),start=+startNo.value,end=+endNo.value,amt=+dailyAmount.value,sd=startDate.value;
+ if(!name||!start||!end||!amt||!sd)return alert("必須項目を入力してください。");
+ let b={id:crypto.randomUUID(),name,subject:subject.value,unit:unit.value,startNo:start,endNo:end,dailyAmount:amt,startDate:sd,targetDate:targetDate.value,memo:bookMemo.value.trim()};
+ state.books.push(b);state.tasks.push(...generateSchedule(b));render();showView("todayView");
+}
+window.editBook=id=>{
+ let b=state.books.find(x=>x.id===id);
+ let td=prompt("目標終了日（YYYY-MM-DD）",b.targetDate||"");if(td===null)return;
+ let memo=prompt("参考書メモ",b.memo||"");if(memo===null)return;
+ b.targetDate=td;b.memo=memo;render();
+}
+window.showBook=id=>{let b=state.books.find(x=>x.id===id),ts=state.tasks.filter(t=>t.bookId===id);selectedDateTasks.innerHTML=ts.map(renderTask).join("");selectedDateTitle.textContent=b.name+" の全予定";showView("calendarView")}
+window.deleteBook=id=>{if(!confirm("参考書と予定を削除しますか？"))return;state.books=state.books.filter(b=>b.id!==id);state.tasks=state.tasks.filter(t=>t.bookId!==id);state.mistakes=state.mistakes.filter(m=>m.bookId!==id);render()}
+window.addMistake=()=>{
+ if(!mistakeBook.value||!mistakeProblem.value.trim())return alert("参考書と問題番号を入力してください。");
+ state.mistakes.unshift({id:crypto.randomUUID(),bookId:mistakeBook.value,problem:mistakeProblem.value.trim(),topic:mistakeTopic.value.trim()||"未分類",reason:mistakeReason.value,priority:mistakePriority.value,reviewDate:mistakeReview.value||addDays(localDateString(),3),memo:mistakeMemo.value.trim(),mastered:false});
+ mistakeProblem.value="";mistakeTopic.value="";mistakeMemo.value="";render();
+}
+window.masterMistake=id=>{let m=state.mistakes.find(x=>x.id===id);m.mastered=!m.mastered;render()}
+window.deleteMistake=id=>{state.mistakes=state.mistakes.filter(x=>x.id!==id);render()}
+window.askAdvisor=()=>{let q=advisorInput.value.trim();if(!q)return;state.chat.push({role:"user",text:q},{role:"assistant",text:advisorAnswer(q)});advisorInput.value="";render()}
+window.quickAsk=q=>{advisorInput.value=q;askAdvisor()}
+window.exportData=()=>{let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="route-backup.json";a.click();URL.revokeObjectURL(a.href)}
+importFile.addEventListener("change",async e=>{try{let x=JSON.parse(await e.target.files[0].text());state=x;if(!state.mistakes)state.mistakes=[];if(!state.chat)state.chat=[];render();alert("読み込みました。")}catch{alert("読み込めませんでした。")}})
+startDate.value=localDateString();mistakeReview.value=addDays(localDateString(),3);
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
 render();
 </script>
 </body>
