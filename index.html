@@ -179,6 +179,10 @@ label{display:block;font-size:.88rem}
 <label>1日に進める量<input id="dailyAmount" type="number" min="1"></label>
 <label>開始日<input id="startDate" type="date"></label>
 <label>目標終了日<input id="targetDate" type="date"></label>
+<label style="grid-column:1/-1">除外する範囲
+<input id="excludedRanges" placeholder="例：11-14, 38-42, 100">
+<span class="meta">読むだけのページ・索引・解答など、毎日の学習量と復習から外したい範囲</span>
+</label>
 <label style="grid-column:1/-1">参考書メモ<textarea id="bookMemo" rows="2" placeholder="進め方、注意点、使用目的など"></textarea></label>
 </div>
 <button class="primary" style="margin-top:10px" onclick="addBook()">全予定を自動作成</button>
@@ -199,33 +203,76 @@ function daysBetween(a,b){return Math.ceil((parseDate(b)-parseDate(a))/86400000)
 function formatRange(u,s,e){let p=u==="ページ"?"P.":u;return s===e?`${p}${s}`:`${p}${s}〜${e}`}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
-function generateSchedule(book){
- let current=book.startNo,offset=0,tasks=[];
- while(current<=book.endNo){
-  let blocks=[];
-  for(let i=0;i<4&&current<=book.endNo;i++){
-   let start=current,end=Math.min(current+book.dailyAmount-1,book.endNo);
-   blocks.push({start,end});
-   tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"学習",start,end,done:false,note:""});
-   current=end+1;
+function parseExcludedRanges(text,start,end){
+ let excluded=new Set();
+ String(text||"").split(",").map(x=>x.trim()).filter(Boolean).forEach(part=>{
+  let m=part.match(/^(\d+)\s*[-〜~]\s*(\d+)$/);
+  if(m){
+   let a=Number(m[1]),b=Number(m[2]); if(a>b)[a,b]=[b,a];
+   for(let n=Math.max(a,start);n<=Math.min(b,end);n++)excluded.add(n);
+  }else if(/^\d+$/.test(part)){
+   let n=Number(part); if(n>=start&&n<=end)excluded.add(n);
   }
-  let fs=blocks[0].start,fe=blocks[blocks.length-1].end,split=fs+Math.ceil((fe-fs+1)/2)-1;
-  tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"復習",start:fs,end:split,done:false,note:""});
-  if(split<fe)tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),type:"復習",start:split+1,end:fe,done:false,note:""});
+ });
+ return excluded;
+}
+function compressUnits(units){
+ if(!units||!units.length)return [];
+ let sorted=[...units].sort((a,b)=>a-b),segments=[],start=sorted[0],prev=sorted[0];
+ for(let i=1;i<sorted.length;i++){
+  if(sorted[i]===prev+1){prev=sorted[i];continue}
+  segments.push({start,end:prev});start=prev=sorted[i];
+ }
+ segments.push({start,end:prev});
+ return segments;
+}
+function formatTaskRange(book,task){
+ if(task.units&&task.units.length){
+  return compressUnits(task.units).map(x=>formatRange(book.unit,x.start,x.end)).join("・");
+ }
+ return formatRange(book.unit,task.start,task.end);
+}
+function generateSchedule(book){
+ let excluded=parseExcludedRanges(book.excludedRanges,book.startNo,book.endNo);
+ let available=[];
+ for(let n=book.startNo;n<=book.endNo;n++)if(!excluded.has(n))available.push(n);
+ let cursor=0,offset=0,tasks=[];
+ while(cursor<available.length){
+  let blocks=[];
+  for(let i=0;i<4&&cursor<available.length;i++){
+   let units=available.slice(cursor,cursor+book.dailyAmount);
+   cursor+=units.length; blocks.push(units);
+   tasks.push({
+    id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),
+    type:"学習",units,start:units[0],end:units[units.length-1],done:false,note:""
+   });
+  }
+  let cycleUnits=blocks.flat();
+  let splitIndex=Math.ceil(cycleUnits.length/2);
+  let first=cycleUnits.slice(0,splitIndex),second=cycleUnits.slice(splitIndex);
+  if(first.length)tasks.push({
+   id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),
+   type:"復習",units:first,start:first[0],end:first[first.length-1],done:false,note:""
+  });
+  if(second.length)tasks.push({
+   id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,offset++),
+   type:"復習",units:second,start:second[0],end:second[second.length-1],done:false,note:""
+  });
  }
  return tasks;
 }
 function getBookStats(book){
  let study=state.tasks.filter(t=>t.bookId===book.id&&t.type==="学習").sort((a,b)=>a.date.localeCompare(b.date));
  let done=study.filter(t=>t.done);
- let completedUnits=done.reduce((sum,t)=>sum+(t.end-t.start+1),0);
- let total=book.endNo-book.startNo+1;
+ let excluded=parseExcludedRanges(book.excludedRanges,book.startNo,book.endNo);
+ let completedUnits=done.reduce((sum,t)=>sum+(t.units?t.units.length:(t.end-t.start+1)),0);
+ let total=(book.endNo-book.startNo+1)-excluded.size;
  completedUnits=Math.min(total,completedUnits);
  let percent=total?Math.round(completedUnits/total*100):0;
  let last14=done.filter(t=>daysBetween(t.date,localDateString())<=14);
  let firstDate=done.length?done[0].date:book.startDate;
  let elapsed=Math.max(1,daysBetween(firstDate,localDateString())+1);
- let pace14=last14.reduce((s,t)=>s+(t.end-t.start+1),0)/14;
+ let pace14=last14.reduce((s,t)=>s+(t.units?t.units.length:(t.end-t.start+1)),0)/14;
  let overall=completedUnits/elapsed;
  let pace=Math.max(pace14,overall,book.dailyAmount*4/6*.5);
  let remaining=Math.max(0,total-completedUnits);
@@ -252,7 +299,7 @@ function renderTask(t){
  let b=state.books.find(x=>x.id===t.bookId);if(!b)return"";
  return `<div class="task ${t.done?"done":""}">
  <input type="checkbox" ${t.done?"checked":""} onchange="toggleTask('${t.id}')">
- <div class="task-main"><div class="task-title">${esc(b.name)}｜${formatRange(b.unit,t.start,t.end)}<span class="badge">${t.type}</span></div>
+ <div class="task-main"><div class="task-title">${esc(b.name)}｜${formatTaskRange(b,t)}<span class="badge">${t.type}</span></div>
  <div class="meta">${t.date}・${b.subject}${t.note?"・"+esc(t.note):""}</div>
  <button class="small" style="width:auto;margin-top:5px" onclick="editTaskNote('${t.id}')">メモ</button></div></div>`;
 }
@@ -284,7 +331,7 @@ function render(){
  bookList.innerHTML=state.books.length?state.books.map(b=>{
   let s=getBookStats(b);
   return `<div class="book-row"><div class="book-top"><div style="flex:1"><strong>${esc(b.name)}</strong>
-  <div class="meta">${b.subject}・${formatRange(b.unit,b.startNo,b.endNo)}・目標 ${b.targetDate||"未設定"}</div>
+  <div class="meta">${b.subject}・${formatRange(b.unit,b.startNo,b.endNo)}・目標 ${b.targetDate||"未設定"}</div>${b.excludedRanges?`<div class="meta">除外：${esc(b.excludedRanges)}</div>`:""}
   <div class="progress-track"><div class="progress-fill" style="width:${s.percent}%"></div></div>
   <div><strong>${s.percent}%</strong>・残り${s.remaining}${b.unit}・終了見込み ${s.estimated}</div>
   <div>${statusText(s)}</div><div class="small">${suggestion(b,s)}</div>${b.memo?`<div class="meta">メモ：${esc(b.memo)}</div>`:""}</div>
@@ -336,14 +383,24 @@ window.editTaskNote=id=>{let t=state.tasks.find(x=>x.id===id);let n=prompt("こ�
 window.addBook=()=>{
  let name=bookName.value.trim(),start=+startNo.value,end=+endNo.value,amt=+dailyAmount.value,sd=startDate.value;
  if(!name||!start||!end||!amt||!sd)return alert("必須項目を入力してください。");
- let b={id:crypto.randomUUID(),name,subject:subject.value,unit:unit.value,startNo:start,endNo:end,dailyAmount:amt,startDate:sd,targetDate:targetDate.value,memo:bookMemo.value.trim()};
- state.books.push(b);state.tasks.push(...generateSchedule(b));render();showView("todayView");
+ let b={id:crypto.randomUUID(),name,subject:subject.value,unit:unit.value,startNo:start,endNo:end,dailyAmount:amt,startDate:sd,targetDate:targetDate.value,excludedRanges:excludedRanges.value.trim(),memo:bookMemo.value.trim()};
+ state.books.push(b);state.tasks.push(...generateSchedule(b));excludedRanges.value="";render();showView("todayView");
 }
 window.editBook=id=>{
  let b=state.books.find(x=>x.id===id);
  let td=prompt("目標終了日（YYYY-MM-DD）",b.targetDate||"");if(td===null)return;
+ let ex=prompt("除外範囲（例：11-14, 38-42, 100）",b.excludedRanges||"");if(ex===null)return;
  let memo=prompt("参考書メモ",b.memo||"");if(memo===null)return;
- b.targetDate=td;b.memo=memo;render();
+ let changed=ex!==String(b.excludedRanges||"");
+ b.targetDate=td;b.excludedRanges=ex;b.memo=memo;
+ if(changed&&confirm("除外範囲を反映するため、この参考書の未完了予定を作り直しますか？")){
+   let completed=state.tasks.filter(t=>t.bookId===id&&t.done);
+   state.tasks=state.tasks.filter(t=>t.bookId!==id||t.done);
+   let completedUnits=new Set(completed.filter(t=>t.type==="学習").flatMap(t=>t.units||Array.from({length:t.end-t.start+1},(_,i)=>t.start+i)));
+   let regenerated=generateSchedule(b).filter(t=>!(t.type==="学習"&&(t.units||[]).every(n=>completedUnits.has(n))));
+   state.tasks.push(...regenerated);
+ }
+ render();
 }
 window.showBook=id=>{let b=state.books.find(x=>x.id===id),ts=state.tasks.filter(t=>t.bookId===id);selectedDateTasks.innerHTML=ts.map(renderTask).join("");selectedDateTitle.textContent=b.name+" の全予定";showView("calendarView")}
 window.deleteBook=id=>{if(!confirm("参考書と予定を削除しますか？"))return;state.books=state.books.filter(b=>b.id!==id);state.tasks=state.tasks.filter(t=>t.bookId!==id);state.mistakes=state.mistakes.filter(m=>m.bookId!==id);render()}
