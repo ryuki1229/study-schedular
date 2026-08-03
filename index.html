@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#1689f5" />
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <title>参考書スケジューラー</title>
+  <title>Route</title>
   <style>
     :root {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color-scheme: light dark;
+      --accent: #1689f5;
     }
     * { box-sizing: border-box; }
     body {
@@ -19,9 +20,11 @@
       padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
       line-height: 1.45;
     }
-    h1 { font-size: 1.45rem; margin: 4px 0; }
+    h1 { font-size: 1.55rem; margin: 4px 0; }
     h2 { font-size: 1.1rem; margin: 0 0 10px; }
     .sub { opacity: .7; margin: 0 0 12px; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand img { width:42px; height:42px; border-radius:11px; }
     .card {
       border: 1px solid #8885;
       border-radius: 16px;
@@ -67,6 +70,7 @@
       height: 23px;
       flex: 0 0 auto;
       margin-top: 2px;
+      accent-color: var(--accent);
     }
     .task-main { flex: 1; }
     .task-title { font-weight: 750; }
@@ -95,12 +99,29 @@
     .summary strong { display: block; font-size: 1.25rem; }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
     .toolbar button { width: auto; }
-    .book-row { padding: 11px 0; border-bottom: 1px solid #8883; }
+    .book-row { padding: 13px 0; border-bottom: 1px solid #8883; }
     .book-row:last-child { border-bottom: 0; }
     .book-top { display:flex; justify-content:space-between; gap:10px; }
     .actions { display:flex; gap:6px; }
     .actions button { width:auto; padding:6px 9px; font-size:.8rem; }
-
+    .progress-track {
+      width:100%;
+      height:10px;
+      border-radius:999px;
+      background:#8883;
+      overflow:hidden;
+      margin:8px 0 5px;
+    }
+    .progress-fill {
+      height:100%;
+      border-radius:999px;
+      background:var(--accent);
+      transition:width .25s ease;
+    }
+    .remaining {
+      font-size:.84rem;
+      font-weight:650;
+    }
     .calendar-head {
       display: grid;
       grid-template-columns: 44px 1fr 44px;
@@ -130,17 +151,14 @@
       overflow:hidden;
     }
     .day.out { opacity:.32; }
-    .day.today { outline:2px solid currentColor; }
-    .day.selected { background: color-mix(in srgb, currentColor 12%, transparent); }
+    .day.today { outline:2px solid var(--accent); }
+    .day.selected { background: color-mix(in srgb, var(--accent) 16%, transparent); }
     .date-num { font-size:.82rem; font-weight:700; }
     .dot-row { display:flex; flex-wrap:wrap; gap:3px; margin-top:6px; }
-    .dot { width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.65; }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:.75; }
     .count { font-size:.72rem; opacity:.7; margin-top:4px; }
     .empty { opacity:.65; padding:10px 0; }
-    .install {
-      margin-top: 10px;
-      border-style: dashed;
-    }
+    .install { margin-top: 10px; border-style: dashed; }
     @media (max-width:650px){
       .grid{grid-template-columns:1fr}
       .day{min-height:62px;padding:5px}
@@ -149,8 +167,13 @@
   </style>
 </head>
 <body>
-  <h1>参考書スケジューラー</h1>
-  <p class="sub">4日進める → 2日復習。毎日はチェックするだけ。</p>
+  <div class="brand">
+    <img src="icon-192.png" alt="">
+    <div>
+      <h1>Route</h1>
+      <p class="sub">参考書の学習ルートを自動管理</p>
+    </div>
+  </div>
 
   <div class="tabs">
     <button onclick="showView('todayView')">今日</button>
@@ -206,8 +229,8 @@
     </div>
     <div class="card install">
       <strong>アプリとして使う</strong>
-      <div class="meta">Webに公開したあと、ブラウザの「ホーム画面に追加」でインストールできます。</div>
-      <button id="installButton" class="hidden" style="margin-top:10px">アプリをインストール</button>
+      <div class="meta">ブラウザの「ホーム画面に追加」または「アプリをインストール」を使ってください。</div>
+      <button id="installButton" class="hidden" style="margin-top:10px">Routeをインストール</button>
     </div>
   </section>
 
@@ -305,6 +328,17 @@ function renderTask(task){
     </div>
   </div>`;
 }
+function getBookProgress(book){
+  const studyTasks=state.tasks.filter(t=>t.bookId===book.id && t.type==="学習");
+  const completedStudy=studyTasks.filter(t=>t.done);
+  const lastCompleted=completedStudy.length ? Math.max(...completedStudy.map(t=>t.end)) : book.startNo-1;
+  const totalUnits=book.endNo-book.startNo+1;
+  const completedUnits=Math.max(0, Math.min(totalUnits,lastCompleted-book.startNo+1));
+  const percent=totalUnits ? Math.round(completedUnits/totalUnits*100) : 0;
+  const nextStart=Math.min(book.endNo,lastCompleted+1);
+  const remaining=Math.max(0,book.endNo-lastCompleted);
+  return {percent,lastCompleted,nextStart,remaining,totalUnits};
+}
 function render(){
   const today=localDateString();
   const todayTasks=state.tasks.filter(t=>t.date===today);
@@ -320,14 +354,19 @@ function render(){
 
   bookList.innerHTML=state.books.length?state.books.map(book=>{
     const tasks=state.tasks.filter(t=>t.bookId===book.id);
-    const done=tasks.filter(t=>t.done).length;
-    const percent=tasks.length?Math.round(done/tasks.length*100):0;
+    const checked=tasks.filter(t=>t.done).length;
+    const p=getBookProgress(book);
+    const remainingText=p.remaining===0
+      ? "学習範囲は完了"
+      : `残り ${p.remaining}${book.unit}（次は${formatRange(book.unit,p.nextStart,Math.min(p.nextStart+book.dailyAmount-1,book.endNo))}）`;
     return `<div class="book-row">
       <div class="book-top">
-        <div>
+        <div style="flex:1">
           <strong>${book.name}</strong>
           <div class="meta">${book.subject}・${formatRange(book.unit,book.startNo,book.endNo)}・1日${book.dailyAmount}${book.unit}</div>
-          <div class="meta">進捗 ${done}/${tasks.length}（${percent}%）</div>
+          <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
+          <div class="remaining">${p.percent}%・${remainingText}</div>
+          <div class="meta">予定チェック ${checked}/${tasks.length}</div>
         </div>
         <div class="actions">
           <button onclick="showBookSchedule('${book.id}')">予定</button>
@@ -405,7 +444,7 @@ addBook.addEventListener("click",()=>{
 });
 window.exportData=function(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="study-scheduler-backup.json"; a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="route-backup.json"; a.click(); URL.revokeObjectURL(a.href);
 };
 importFile.addEventListener("change",async e=>{
   const file=e.target.files[0]; if(!file)return;
@@ -415,7 +454,6 @@ importFile.addEventListener("change",async e=>{
     state=imported; render(); alert("バックアップを読み込みました。");
   }catch{alert("読み込めないファイルです。");}
 });
-
 window.addEventListener("beforeinstallprompt",e=>{
   e.preventDefault(); deferredPrompt=e; installButton.classList.remove("hidden");
 });
@@ -426,7 +464,6 @@ installButton.addEventListener("click",async()=>{
   deferredPrompt=null;
   installButton.classList.add("hidden");
 });
-
 const todayTasksEl=document.getElementById("todayTasks");
 document.getElementById("startDate").value=localDateString();
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js")); }
