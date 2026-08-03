@@ -1,4 +1,4 @@
-import { Task } from '../types/task'
+import type { Task } from '../types/task'
 
 const STORAGE_KEY = 'route_tasks'
 const STORAGE_VERSION = 1

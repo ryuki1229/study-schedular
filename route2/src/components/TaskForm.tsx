@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { Task } from '../types/task'
+import { useEffect, useState } from 'react'
+import type { Task } from '../types/task'
 
 type Props = {
   open: boolean

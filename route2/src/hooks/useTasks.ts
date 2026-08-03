@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Task } from '../types/task'
+import type { Task } from '../types/task'
 import * as storage from '../services/storage'
 
 export function useTasks(initial: Task[] = []) {
