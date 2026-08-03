@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 type StudyTask = {
@@ -9,6 +9,21 @@ type StudyTask = {
   icon: string
   completed: boolean
 }
+
+type TaskForm = {
+  subject: string
+  book: string
+  range: string
+  icon: string
+}
+
+type StoredTaskData = {
+  version: number
+  tasks: StudyTask[]
+}
+
+const STORAGE_KEY = 'route2.studyTasks'
+const STORAGE_VERSION = 1
 
 const initialTasks: StudyTask[] = [
   {
@@ -37,16 +52,60 @@ const initialTasks: StudyTask[] = [
   },
 ]
 
-function App() {
-  const [tasks, setTasks] = useState(initialTasks)
-  const [isAddBookOpen, setIsAddBookOpen] = useState(false)
+const emptyTaskForm: TaskForm = {
+  subject: '',
+  book: '',
+  range: '',
+  icon: '📚',
+}
 
-  const [newTask, setNewTask] = useState({
-    subject: '',
-    book: '',
-    range: '',
-    icon: '📚',
-  })
+const getSavedTasks = (): StudyTask[] => {
+  if (typeof window === 'undefined') {
+    return initialTasks
+  }
+
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (!raw) {
+    return initialTasks
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as StoredTaskData
+    if (
+      parsed.version === STORAGE_VERSION &&
+      Array.isArray(parsed.tasks) &&
+      parsed.tasks.every(
+        (task) =>
+          typeof task.id === 'number' &&
+          typeof task.subject === 'string' &&
+          typeof task.book === 'string' &&
+          typeof task.range === 'string' &&
+          typeof task.icon === 'string' &&
+          typeof task.completed === 'boolean',
+      )
+    ) {
+      return parsed.tasks
+    }
+  } catch {
+    // ignore invalid localStorage contents
+  }
+
+  return initialTasks
+}
+
+const saveTasks = (tasks: StudyTask[]) => {
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: STORAGE_VERSION, tasks }),
+  )
+}
+
+function App() {
+  const [tasks, setTasks] = useState<StudyTask[]>(getSavedTasks)
+  const [isAddBookOpen, setIsAddBookOpen] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+
+  const [newTask, setNewTask] = useState<TaskForm>(emptyTaskForm)
 
   const completedCount = tasks.filter((task) => task.completed).length
 
@@ -54,6 +113,10 @@ function App() {
     tasks.length === 0
       ? 0
       : Math.round((completedCount / tasks.length) * 100)
+
+  useEffect(() => {
+    saveTasks(tasks)
+  }, [tasks])
 
   const toggleTask = (taskId: number) => {
     setTasks((currentTasks) =>
@@ -65,35 +128,80 @@ function App() {
     )
   }
 
-  const addTask = () => {
-    if (
-      newTask.subject.trim() === '' ||
-      newTask.book.trim() === '' ||
-      newTask.range.trim() === ''
-    ) {
+  const openAddModal = () => {
+    setEditingTaskId(null)
+    setNewTask(emptyTaskForm)
+    setIsAddBookOpen(true)
+  }
+
+  const openEditModal = (task: StudyTask) => {
+    setEditingTaskId(task.id)
+    setNewTask({
+      subject: task.subject,
+      book: task.book,
+      range: task.range,
+      icon: task.icon,
+    })
+    setIsAddBookOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsAddBookOpen(false)
+    setEditingTaskId(null)
+    setNewTask(emptyTaskForm)
+  }
+
+  const validateTask = () => {
+    return (
+      newTask.subject.trim() !== '' &&
+      newTask.book.trim() !== '' &&
+      newTask.range.trim() !== '' &&
+      newTask.icon.trim() !== ''
+    )
+  }
+
+  const saveTask = () => {
+    if (!validateTask()) {
       alert('教科・参考書名・範囲を全部入力してね')
       return
     }
 
-    const taskToAdd: StudyTask = {
-      id: Date.now(),
-      subject: newTask.subject.trim(),
-      book: newTask.book.trim(),
-      range: newTask.range.trim(),
-      icon: newTask.icon,
-      completed: false,
+    if (editingTaskId !== null) {
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === editingTaskId
+            ? {
+                ...task,
+                subject: newTask.subject.trim(),
+                book: newTask.book.trim(),
+                range: newTask.range.trim(),
+                icon: newTask.icon,
+              }
+            : task,
+        ),
+      )
+    } else {
+      const taskToAdd: StudyTask = {
+        id: Date.now(),
+        subject: newTask.subject.trim(),
+        book: newTask.book.trim(),
+        range: newTask.range.trim(),
+        icon: newTask.icon,
+        completed: false,
+      }
+      setTasks((currentTasks) => [...currentTasks, taskToAdd])
     }
 
-    setTasks((currentTasks) => [...currentTasks, taskToAdd])
+    closeModal()
+  }
 
-    setNewTask({
-      subject: '',
-      book: '',
-      range: '',
-      icon: '📚',
-    })
-
-    setIsAddBookOpen(false)
+  const deleteTask = (taskId: number) => {
+    setTasks((currentTasks) =>
+      currentTasks.filter((task) => task.id !== taskId),
+    )
+    if (editingTaskId === taskId) {
+      closeModal()
+    }
   }
 
   return (
@@ -170,14 +278,34 @@ function App() {
                   <p>{task.range}</p>
                 </div>
 
-                <button
-                  className="check-button"
-                  type="button"
-                  onClick={() => toggleTask(task.id)}
-                  aria-label={`${task.book}の完了状態を変更`}
-                >
-                  {task.completed ? '✓' : ''}
-                </button>
+                <div className="task-controls">
+                  <button
+                    className="check-button"
+                    type="button"
+                    onClick={() => toggleTask(task.id)}
+                    aria-label={`${task.book}の完了状態を変更`}
+                  >
+                    {task.completed ? '✓' : ''}
+                  </button>
+
+                  <button
+                    className="edit-button"
+                    type="button"
+                    onClick={() => openEditModal(task)}
+                    aria-label={`${task.book}を編集`}
+                  >
+                    ✎
+                  </button>
+
+                  <button
+                    className="delete-button"
+                    type="button"
+                    onClick={() => deleteTask(task.id)}
+                    aria-label={`${task.book}を削除`}
+                  >
+                    🗑
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -202,7 +330,7 @@ function App() {
         <button
           className="add-book-button"
           type="button"
-          onClick={() => setIsAddBookOpen(true)}
+          onClick={openAddModal}
         >
           <span>＋</span>
           参考書を追加
@@ -234,7 +362,7 @@ function App() {
       {isAddBookOpen && (
         <div className="modal-overlay">
           <div className="modal">
-            <h2>参考書を追加</h2>
+            <h2>{editingTaskId !== null ? '参考書を編集' : '参考書を追加'}</h2>
 
             <input
               type="text"
@@ -276,7 +404,7 @@ function App() {
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => setIsAddBookOpen(false)}
+                onClick={closeModal}
               >
                 キャンセル
               </button>
@@ -284,9 +412,9 @@ function App() {
               <button
                 type="button"
                 className="primary-button"
-                onClick={addTask}
+                onClick={saveTask}
               >
-                追加する
+                {editingTaskId !== null ? '保存する' : '追加する'}
               </button>
             </div>
           </div>
