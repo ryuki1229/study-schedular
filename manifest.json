@@ -1,7 +1,7 @@
 {
   "name": "Route - 学習ルート管理",
   "short_name": "Route",
-  "description": "参考書の計画、除外範囲、復習、終了見込み、間違い問題を管理",
+  "description": "参考書の1日量や目標日を途中変更し、未完了予定を自動再編成",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

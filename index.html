@@ -45,7 +45,7 @@ h3{font-size:1rem;margin:14px 0 8px}
 .sub{margin:0;color:var(--muted);font-size:.9rem}
 .card{background:var(--card);backdrop-filter:blur(12px);border:1px solid rgba(120,160,210,.22);border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 10px 28px rgba(31,75,125,.08)}
 .hidden{display:none!important}
-.tabs{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:8px 0;background:linear-gradient(180deg,rgba(247,251,255,.94),rgba(247,251,255,.70),transparent);backdrop-filter:blur(8px)}
+.tabs{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px 0;background:linear-gradient(180deg,rgba(247,251,255,.94),rgba(247,251,255,.70),transparent);backdrop-filter:blur(8px)}
 @media(prefers-color-scheme:dark){.tabs{background:linear-gradient(180deg,rgba(8,17,31,.95),rgba(8,17,31,.72),transparent)}}
 button,input,select,textarea{width:100%;border:1px solid rgba(100,130,170,.38);border-radius:11px;padding:10px;font:inherit;color:inherit;background:rgba(255,255,255,.55)}
 @media(prefers-color-scheme:dark){button,input,select,textarea{background:rgba(255,255,255,.05)}}
@@ -89,10 +89,14 @@ label{display:block;font-size:.88rem}
 @media(max-width:700px){
  .grid{grid-template-columns:1fr}
  .summary{grid-template-columns:repeat(2,1fr)}
- .tabs{grid-template-columns:repeat(3,1fr)}
+ .tabs{grid-template-columns:repeat(4,1fr)}
  .day{min-height:59px;padding:4px}
  .book-top{flex-direction:column}
 }
+
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
+.modal{width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--card);border-radius:18px;padding:16px;box-shadow:0 22px 60px rgba(0,0,0,.25)}
+.modal-actions{display:flex;gap:8px;margin-top:12px}.modal-actions button{flex:1}
 </style>
 </head>
 <body>
@@ -103,7 +107,8 @@ label{display:block;font-size:.88rem}
 <button onclick="showView('calendarView')">カレンダー</button>
 <button onclick="showView('booksView')">参考書</button>
 <button onclick="showView('mistakesView')">間違い</button>
-<button onclick="showView('advisorView')">相談</button>
+<button onclick="showView('advisorView')">AI相談</button>
+<button onclick="showView('humanConsultView')">本人相談</button>
 <button onclick="showView('addView')">＋追加</button>
 </div>
 
@@ -168,10 +173,33 @@ label{display:block;font-size:.88rem}
 </div>
 </section>
 
+
+<section class="card hidden" id="humanConsultView">
+<h2>本人に相談</h2>
+<div id="consultLimitNotice" class="card advice"></div>
+<div id="consultForm">
+<div class="grid">
+<label>科目<select id="consultSubject"><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>社会</option><option>情報</option><option>その他</option></select></label>
+<label>参考書<select id="consultBook"></select></label>
+<label>大問<input id="consultMajor" placeholder="例：4"></label>
+<label>中問<input id="consultMiddle" placeholder="例：2"></label>
+<label>小問<input id="consultMinor" placeholder="例：3"></label>
+<label>枝番<input id="consultBranch" placeholder="例：ア"></label>
+<label style="grid-column:1/-1">相談内容<textarea id="consultText" rows="5" placeholder="今困っていること、試したこと、いつまでに解決したいか"></textarea></label>
+<label style="grid-column:1/-1">問題・進捗の写真<input id="consultImage" type="file" accept="image/*" capture="environment"><span class="meta">スマホではそのまま撮影できます。</span></label>
+</div>
+<div id="consultPreview" style="margin-top:10px"></div>
+<button class="primary" style="margin-top:10px" onclick="submitConsultation()">相談を送信</button>
+</div>
+<h3>AIによる事前整理</h3><div id="consultAiSummary" class="card"></div>
+<h3>相談履歴</h3><div id="consultHistory"></div>
+<div class="card"><strong>現在のMVPについて</strong><div class="meta">今は端末内保存です。Firebase接続後、本人の管理画面へ送信できます。</div></div>
+</section>
+
 <section class="card hidden" id="addView">
 <h2>参考書を登録</h2>
 <div class="grid">
-<label>参考書名<input id="bookName" placeholder="例：一対一対応 数Ⅲ"></label>
+<label>参考書名<input id="bookName" list="bookSuggestions" placeholder="参考書名を入力"><datalist id="bookSuggestions"></datalist></label>
 <label>科目<select id="subject"><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>社会</option><option>情報</option><option>その他</option></select></label>
 <label>単位<select id="unit"><option>ページ</option><option>問題</option><option>講</option><option>Lesson</option><option>No.</option><option>章</option></select></label>
 <label>開始番号<input id="startNo" type="number" value="1" min="1"></label>
@@ -190,10 +218,23 @@ label{display:block;font-size:.88rem}
 
 <script>
 const KEY="study_scheduler_pwa_v1";
-let state=JSON.parse(localStorage.getItem(KEY)||'{"books":[],"tasks":[],"mistakes":[],"chat":[]}');
+let state=JSON.parse(localStorage.getItem(KEY)||'{"books":[],"tasks":[],"mistakes":[],"chat":[],"consultations":[]}');
 if(!state.mistakes)state.mistakes=[];
 if(!state.chat)state.chat=[];
+if(!state.consultations)state.consultations=[];
 let selectedDate=localDateString(),calendarCursor=new Date();
+let editingBookId=null;
+
+const BUILTIN_BOOKS=[
+{name:"システム英単語",subject:"英語",unit:"語",end:2027,daily:100,exclude:""},
+{name:"システム英熟語",subject:"英語",unit:"熟語",end:2200,daily:50,exclude:""},
+{name:"一対一対応 数ⅠA",subject:"数学",unit:"問題",end:320,daily:10,exclude:""},
+{name:"一対一対応 数Ⅱ",subject:"数学",unit:"問題",end:310,daily:10,exclude:""},
+{name:"一対一対応 数Ⅲ",subject:"数学",unit:"問題",end:340,daily:8,exclude:""},
+{name:"良問の風",subject:"物理",unit:"問題",end:220,daily:8,exclude:""},
+{name:"名門の森",subject:"物理",unit:"問題",end:180,daily:6,exclude:""}
+];
+
 
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function localDateString(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -232,6 +273,70 @@ function formatTaskRange(book,task){
  }
  return formatRange(book.unit,task.start,task.end);
 }
+
+function getCompletedStudyUnits(bookId){
+ const set=new Set();
+ state.tasks.filter(t=>t.bookId===bookId&&t.type==="学習"&&t.done).forEach(t=>{
+  if(t.units&&t.units.length)t.units.forEach(n=>set.add(n));
+  else for(let n=t.start;n<=t.end;n++)set.add(n);
+ });
+ return set;
+}
+function getRemainingUnits(book){
+ const excluded=parseExcludedRanges(book.excludedRanges,book.startNo,book.endNo);
+ const completed=getCompletedStudyUnits(book.id),units=[];
+ for(let n=book.startNo;n<=book.endNo;n++)if(!excluded.has(n)&&!completed.has(n))units.push(n);
+ return units;
+}
+function generateScheduleFromUnits(book,units,startDate,dailyAmount){
+ let cursor=0,offset=0,tasks=[];
+ while(cursor<units.length){
+  let blocks=[];
+  for(let i=0;i<4&&cursor<units.length;i++){
+   const chunk=units.slice(cursor,cursor+dailyAmount);cursor+=chunk.length;blocks.push(chunk);
+   tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(startDate,offset++),type:"学習",units:chunk,start:chunk[0],end:chunk.at(-1),done:false,note:""});
+  }
+  const cycle=blocks.flat(),cut=Math.ceil(cycle.length/2),a=cycle.slice(0,cut),b=cycle.slice(cut);
+  if(a.length)tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(startDate,offset++),type:"復習",units:a,start:a[0],end:a.at(-1),done:false,note:""});
+  if(b.length)tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(startDate,offset++),type:"復習",units:b,start:b[0],end:b.at(-1),done:false,note:""});
+ }
+ return tasks;
+}
+function calculateNeededDailyAmount(book,targetDate,startDate){
+ const remaining=getRemainingUnits(book).length;if(!remaining)return 0;
+ const days=Math.max(1,daysBetween(startDate,targetDate)+1);
+ return Math.max(1,Math.ceil(remaining/Math.max(1,Math.floor(days*4/6))));
+}
+function openEditPlan(id){
+ const b=state.books.find(x=>x.id===id);if(!b)return;
+ editingBookId=id;editPlanBookName.textContent=b.name;editDailyAmount.value=b.dailyAmount;
+ editTargetDate.value=b.targetDate||"";editPlanStartDate.value=localDateString();editPlanMode.value="pace";
+ editPlanModal.classList.remove("hidden");updateEditPlanPreview();
+}
+function closeEditPlan(){editPlanModal.classList.add("hidden");editingBookId=null}
+function updateEditPlanPreview(){
+ const b=state.books.find(x=>x.id===editingBookId);if(!b)return;
+ const start=editPlanStartDate.value||localDateString(),target=editTargetDate.value;
+ let amount=Math.max(1,Number(editDailyAmount.value)||b.dailyAmount);
+ if(editPlanMode.value==="target"&&target){amount=calculateNeededDailyAmount(b,target,start);editDailyAmount.value=amount}
+ const remaining=getRemainingUnits(b).length,studyDays=Math.ceil(remaining/amount),cycles=Math.ceil(studyDays/4);
+ const finish=remaining?addDays(start,Math.max(0,studyDays+cycles*2-1)):start;
+ let status="";if(target){const d=daysBetween(target,finish);status=d<=0?'<br><span class="status-ok">目標内に終了見込み</span>':`<br><span class="status-bad">${d}日遅れる見込み</span>`}
+ editPlanPreview.innerHTML=`残り：${remaining}${b.unit}<br>新しい1日量：${amount}${b.unit}<br>新しい終了見込み：${finish}${target?`<br>目標終了日：${target}`:""}${status}`;
+}
+function applyPlanChange(){
+ const b=state.books.find(x=>x.id===editingBookId);if(!b)return;
+ const start=editPlanStartDate.value||localDateString(),target=editTargetDate.value;
+ let amount=Math.max(1,Number(editDailyAmount.value)||b.dailyAmount);
+ if(editPlanMode.value==="target"&&target)amount=calculateNeededDailyAmount(b,target,start);
+ b.dailyAmount=amount;b.targetDate=target;
+ const remaining=getRemainingUnits(b);
+ state.tasks=state.tasks.filter(t=>!(t.bookId===b.id&&!t.done&&t.date>=start));
+ state.tasks.push(...generateScheduleFromUnits(b,remaining,start,amount));
+ closeEditPlan();setupBookAutocomplete();
+render();alert(`今日以降を1日${amount}${b.unit}で組み直しました。`);
+}
+
 function generateSchedule(book){
  let excluded=parseExcludedRanges(book.excludedRanges,book.startNo,book.endNo);
  let available=[];
@@ -317,6 +422,44 @@ function buildMainAdvice(){
  if(worst.s.target&&worst.s.delta>0)return `<strong>${esc(worst.b.name)}</strong>が目標より${worst.s.delta}日遅れる見込みです。<br>${suggestion(worst.b,worst.s)}`;
  return `<strong>${esc(worst.b.name)}</strong>は現在${worst.s.percent}%です。終了見込みは${worst.s.estimated}です。`;
 }
+
+function formatProblemNumber(a,b,c,d){
+ let x=[]; if(a)x.push(`第${a}問`); if(b)x.push(`（${b}）`); if(c)x.push(`小問${c}`); if(d)x.push(d);
+ return x.join("")||"問題番号なし";
+}
+function compressImageFile(file,maxWidth=1200,quality=.76){
+ return new Promise((resolve,reject)=>{
+  if(!file){resolve("");return}
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{
+   const scale=Math.min(1,maxWidth/img.width),canvas=document.createElement("canvas");
+   canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+   canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+   resolve(canvas.toDataURL("image/jpeg",quality));
+  };img.onerror=reject;img.src=r.result};r.onerror=reject;r.readAsDataURL(file);
+ });
+}
+function consultationUsedToday(){return state.consultations.some(c=>c.createdDate===localDateString())}
+function buildConsultAiSummary(d){
+ let b=state.books.find(x=>x.id===d.bookId),lines=[];
+ if(b){let s=getBookStats(b);lines.push(`${b.name}は現在${s.percent}%、終了見込みは${s.estimated}です。`);if(s.target&&s.delta>0)lines.push(`目標より${s.delta}日遅れる見込みです。`)}
+ let rel=state.mistakes.filter(m=>!m.mastered&&m.bookId===d.bookId);if(rel.length)lines.push(`関連する未克服問題が${rel.length}件あります。`);
+ if(d.text.includes("間に合")||d.text.includes("遅れ"))lines.push("進度と目標日の調整が主な相談テーマです。");
+ if(d.text.includes("難")||d.text.includes("わから"))lines.push("教材難度または理解不足の確認が必要です。");
+ return lines.join("\n")||"相談内容を確認し、進捗・目標・つまずき原因を整理します。";
+}
+function renderConsultations(){
+ const used=consultationUsedToday();
+ consultLimitNotice.innerHTML=used?'<strong>本日の新規相談枠は使用済みです。</strong><br>次回は明日0:00以降です。':'<strong>本日の相談枠：1件</strong><br>AIで整理してから保存します。';
+ consultForm.classList.toggle("hidden",used);
+ consultBook.innerHTML='<option value="">参考書を選択</option>'+state.books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
+ const latest=state.consultations[0];consultAiSummary.textContent=latest?latest.aiSummary:"まだ相談はありません。";
+ consultHistory.innerHTML=state.consultations.length?state.consultations.map(c=>{
+  let b=state.books.find(x=>x.id===c.bookId);
+  return `<div class="route-row"><div><strong>${esc(c.subject)}｜${esc(b?.name||"参考書未選択")}</strong><span class="badge">${esc(c.status)}</span></div><div class="meta">${c.createdDate}・${esc(c.problemLabel)}</div><div>${esc(c.text)}</div>${c.image?`<img src="${c.image}" style="max-width:100%;max-height:240px;border-radius:12px;margin-top:8px">`:""}<div class="small" style="white-space:pre-wrap;margin-top:8px"><strong>AI整理：</strong>\n${esc(c.aiSummary)}</div></div>`;
+ }).join(""):'<div class="empty">相談履歴はありません。</div>';
+}
+
 function render(){
  let today=localDateString();
  let todays=state.tasks.filter(t=>t.date===today),over=state.tasks.filter(t=>t.date<today&&!t.done);
@@ -335,12 +478,12 @@ function render(){
   <div class="progress-track"><div class="progress-fill" style="width:${s.percent}%"></div></div>
   <div><strong>${s.percent}%</strong>・残り${s.remaining}${b.unit}・終了見込み ${s.estimated}</div>
   <div>${statusText(s)}</div><div class="small">${suggestion(b,s)}</div>${b.memo?`<div class="meta">メモ：${esc(b.memo)}</div>`:""}</div>
-  <div class="actions"><button onclick="editBook('${b.id}')">編集</button><button onclick="showBook('${b.id}')">予定</button><button onclick="deleteBook('${b.id}')">削除</button></div></div></div>`;
+  <div class="actions"><button onclick="openEditPlan('${b.id}')">計画変更</button><button onclick="editBook('${b.id}')">メモ編集</button><button onclick="showBook('${b.id}')">予定</button><button onclick="deleteBook('${b.id}')">削除</button></div></div></div>`;
  }).join(""):'<div class="empty">参考書は未登録です。</div>';
 
  mistakeBook.innerHTML='<option value="">参考書を選択</option>'+state.books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
  mistakeList.innerHTML=state.mistakes.filter(m=>!m.mastered).length?state.mistakes.filter(m=>!m.mastered).map(renderMistake).join(""):'<div class="empty">未克服の問題はありません。</div>';
- renderCalendar();renderSelectedDate();renderChat();save();
+ renderCalendar();renderSelectedDate();renderChat();renderConsultations();save();
 }
 function renderCalendar(){
  let y=calendarCursor.getFullYear(),m=calendarCursor.getMonth();calendarTitle.textContent=`${y}年 ${m+1}月`;
@@ -375,7 +518,7 @@ function advisorAnswer(q){
  return "進捗については「予定に間に合う？」「今日何を優先？」「弱点を教えて」のように聞いてください。今後、本物のAI接続で自由相談と類題生成に拡張できます。";
 }
 
-window.showView=id=>["todayView","calendarView","booksView","mistakesView","advisorView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
+window.showView=id=>["todayView","calendarView","booksView","mistakesView","advisorView","humanConsultView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
 window.changeMonth=n=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+n,1);renderCalendar()}
 window.selectDate=s=>{selectedDate=s;renderCalendar();renderSelectedDate()}
 window.toggleTask=id=>{let t=state.tasks.find(x=>x.id===id);if(t)t.done=!t.done;render()}
@@ -413,11 +556,58 @@ window.masterMistake=id=>{let m=state.mistakes.find(x=>x.id===id);m.mastered=!m.
 window.deleteMistake=id=>{state.mistakes=state.mistakes.filter(x=>x.id!==id);render()}
 window.askAdvisor=()=>{let q=advisorInput.value.trim();if(!q)return;state.chat.push({role:"user",text:q},{role:"assistant",text:advisorAnswer(q)});advisorInput.value="";render()}
 window.quickAsk=q=>{advisorInput.value=q;askAdvisor()}
+
+window.submitConsultation=async()=>{
+ if(consultationUsedToday())return alert("本日の相談枠は使用済みです。");
+ const text=consultText.value.trim();if(!text)return alert("相談内容を入力してください。");
+ let image="";try{image=await compressImageFile(consultImage.files[0])}catch{return alert("画像の読み込みに失敗しました。")}
+ const d={id:crypto.randomUUID(),createdDate:localDateString(),createdAt:new Date().toISOString(),subject:consultSubject.value,bookId:consultBook.value,problemLabel:formatProblemNumber(consultMajor.value.trim(),consultMiddle.value.trim(),consultMinor.value.trim(),consultBranch.value.trim()),text,image,status:"未送信（端末保存）"};
+ d.aiSummary=buildConsultAiSummary(d);state.consultations.unshift(d);consultText.value="";consultImage.value="";consultPreview.innerHTML="";render();alert("相談を保存しました。");
+}
+consultImage.addEventListener("change",async()=>{const f=consultImage.files[0];if(!f){consultPreview.innerHTML="";return}try{const s=await compressImageFile(f,700,.65);consultPreview.innerHTML=`<img src="${s}" style="max-width:100%;max-height:220px;border-radius:12px">`}catch{}});
+
 window.exportData=()=>{let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="route-backup.json";a.click();URL.revokeObjectURL(a.href)}
-importFile.addEventListener("change",async e=>{try{let x=JSON.parse(await e.target.files[0].text());state=x;if(!state.mistakes)state.mistakes=[];if(!state.chat)state.chat=[];render();alert("読み込みました。")}catch{alert("読み込めませんでした。")}})
+importFile.addEventListener("change",async e=>{try{let x=JSON.parse(await e.target.files[0].text());state=x;if(!state.mistakes)state.mistakes=[];if(!state.chat)state.chat=[];
+if(!state.consultations)state.consultations=[];render();alert("読み込みました。")}catch{alert("読み込めませんでした。")}})
+
+["editDailyAmount","editTargetDate","editPlanStartDate","editPlanMode"].forEach(id=>{
+ const el=document.getElementById(id);if(el){el.addEventListener("input",updateEditPlanPreview);el.addEventListener("change",updateEditPlanPreview)}
+});
+editPlanModal.addEventListener("click",e=>{if(e.target===editPlanModal)closeEditPlan()});
 startDate.value=localDateString();mistakeReview.value=addDays(localDateString(),3);
+
+function setupBookAutocomplete(){
+ const dl=document.getElementById("bookSuggestions");
+ if(!dl)return;
+ dl.innerHTML=BUILTIN_BOOKS.map(b=>`<option value="${b.name}">`).join("");
+ const inp=document.getElementById("bookName");
+ inp.addEventListener("change",()=>{
+   const b=BUILTIN_BOOKS.find(x=>x.name===inp.value);
+   if(!b)return;
+   subject.value=b.subject;
+   unit.value=b.unit;
+   endNo.value=b.end;
+   dailyAmount.value=b.daily;
+   if(document.getElementById("excludedRanges")) excludedRanges.value=b.exclude;
+ });
+}
+
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
 render();
 </script>
+
+<div id="editPlanModal" class="modal-backdrop hidden">
+<div class="modal">
+<h2>学習計画を変更</h2>
+<div id="editPlanBookName" style="font-weight:700;margin-bottom:10px"></div>
+<div class="grid">
+<label>今日以降の1日量<input id="editDailyAmount" type="number" min="1"></label>
+<label>目標終了日<input id="editTargetDate" type="date"></label>
+<label>変更開始日<input id="editPlanStartDate" type="date"></label>
+<label>変更方法<select id="editPlanMode"><option value="pace">1日量を優先</option><option value="target">目標日から必要量を計算</option></select></label>
+</div>
+<div id="editPlanPreview" class="card"></div>
+<div class="modal-actions"><button onclick="closeEditPlan()">キャンセル</button><button class="primary" onclick="applyPlanChange()">予定を組み直す</button></div>
+</div></div>
 </body>
 </html>
