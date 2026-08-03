@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>参考書スケジューラー</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
+      line-height: 1.45;
+    }
+    h1 { font-size: 1.45rem; margin: 4px 0; }
+    h2 { font-size: 1.1rem; margin: 0 0 10px; }
+    .sub { opacity: .7; margin: 0 0 12px; }
+    .card {
+      border: 1px solid #8885;
+      border-radius: 16px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .hidden { display: none !important; }
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      padding: 8px 0;
+      backdrop-filter: blur(12px);
+    }
+    button, input, select {
+      width: 100%;
+      border: 1px solid #8886;
+      border-radius: 10px;
+      padding: 10px;
+      font: inherit;
+    }
+    button { cursor: pointer; font-weight: 700; }
+    .tabs button { padding: 9px 5px; font-size: .86rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 10px;
+    }
+    label { display: block; font-size: .9rem; }
+    .task {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 11px 0;
+      border-bottom: 1px solid #8883;
+    }
+    .task:last-child { border-bottom: 0; }
+    .task input[type="checkbox"] {
+      width: 23px;
+      height: 23px;
+      flex: 0 0 auto;
+      margin-top: 2px;
+    }
+    .task-main { flex: 1; }
+    .task-title { font-weight: 750; }
+    .meta { opacity: .72; font-size: .86rem; }
+    .done .task-title, .done .meta { text-decoration: line-through; opacity: .48; }
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid #8886;
+      font-size: .75rem;
+      margin-left: 5px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .summary > div {
+      border: 1px solid #8884;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+    .summary strong { display: block; font-size: 1.25rem; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toolbar button { width: auto; }
+    .book-row { padding: 11px 0; border-bottom: 1px solid #8883; }
+    .book-row:last-child { border-bottom: 0; }
+    .book-top { display:flex; justify-content:space-between; gap:10px; }
+    .actions { display:flex; gap:6px; }
+    .actions button { width:auto; padding:6px 9px; font-size:.8rem; }
+
+    .calendar-head {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .calendar-head h2 { text-align:center; margin:0; }
+    .calendar-head button { padding:8px; }
+    .weekdays, .calendar-grid {
+      display:grid;
+      grid-template-columns: repeat(7,1fr);
+      gap:4px;
+    }
+    .weekdays div {
+      text-align:center;
+      font-size:.78rem;
+      opacity:.65;
+      padding:4px 0;
+    }
+    .day {
+      min-height: 76px;
+      border:1px solid #8884;
+      border-radius:10px;
+      padding:6px;
+      cursor:pointer;
+      overflow:hidden;
+    }
+    .day.out { opacity:.32; }
+    .day.today { outline:2px solid currentColor; }
+    .day.selected { background: color-mix(in srgb, currentColor 12%, transparent); }
+    .date-num { font-size:.82rem; font-weight:700; }
+    .dot-row { display:flex; flex-wrap:wrap; gap:3px; margin-top:6px; }
+    .dot { width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.65; }
+    .count { font-size:.72rem; opacity:.7; margin-top:4px; }
+    .empty { opacity:.65; padding:10px 0; }
+    .install {
+      margin-top: 10px;
+      border-style: dashed;
+    }
+    @media (max-width:650px){
+      .grid{grid-template-columns:1fr}
+      .day{min-height:62px;padding:5px}
+      .tabs{grid-template-columns:repeat(5,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <h1>参考書スケジューラー</h1>
+  <p class="sub">4日進める → 2日復習。毎日はチェックするだけ。</p>
+
+  <div class="tabs">
+    <button onclick="showView('todayView')">今日</button>
+    <button onclick="showView('calendarView')">カレンダー</button>
+    <button onclick="showView('upcomingView')">今後</button>
+    <button onclick="showView('booksView')">参考書</button>
+    <button onclick="showView('addView')">＋追加</button>
+  </div>
+
+  <section class="card" id="todayView">
+    <h2>今日やること</h2>
+    <div class="summary">
+      <div><strong id="todayCount">0</strong>今日</div>
+      <div><strong id="overdueCount">0</strong>未完了</div>
+      <div><strong id="doneCount">0</strong>完了</div>
+    </div>
+    <div id="overdueWrap">
+      <h2>期限を過ぎた未完了</h2>
+      <div id="overdueTasks"></div>
+    </div>
+    <h2>本日の予定</h2>
+    <div id="todayTasks"></div>
+  </section>
+
+  <section class="card hidden" id="calendarView">
+    <div class="calendar-head">
+      <button onclick="changeMonth(-1)">‹</button>
+      <h2 id="calendarTitle"></h2>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="weekdays">
+      <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+    <div class="card" style="margin-bottom:0">
+      <h2 id="selectedDateTitle">選択日の予定</h2>
+      <div id="selectedDateTasks"></div>
+    </div>
+  </section>
+
+  <section class="card hidden" id="upcomingView">
+    <h2>今後の予定</h2>
+    <div id="upcomingTasks"></div>
+  </section>
+
+  <section class="card hidden" id="booksView">
+    <h2>登録済み参考書</h2>
+    <div id="bookList"></div>
+    <div class="toolbar" style="margin-top:12px">
+      <button onclick="exportData()">バックアップ保存</button>
+      <button onclick="document.getElementById('importFile').click()">バックアップ読込</button>
+      <input class="hidden" id="importFile" type="file" accept="application/json" />
+    </div>
+    <div class="card install">
+      <strong>アプリとして使う</strong>
+      <div class="meta">Webに公開したあと、ブラウザの「ホーム画面に追加」でインストールできます。</div>
+      <button id="installButton" class="hidden" style="margin-top:10px">アプリをインストール</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="addView">
+    <h2>参考書を登録</h2>
+    <div class="grid">
+      <label>参考書名
+        <input id="bookName" placeholder="例：一対一対応 数Ⅲ" />
+      </label>
+      <label>科目
+        <select id="subject">
+          <option>数学</option><option>英語</option><option>物理</option>
+          <option>化学</option><option>国語</option><option>社会</option>
+          <option>情報</option><option>その他</option>
+        </select>
+      </label>
+      <label>単位
+        <select id="unit">
+          <option>ページ</option><option>問題</option><option>講</option>
+          <option>Lesson</option><option>No.</option><option>章</option>
+        </select>
+      </label>
+      <label>開始番号
+        <input id="startNo" type="number" min="1" value="1" />
+      </label>
+      <label>終了番号
+        <input id="endNo" type="number" min="1" placeholder="例：320" />
+      </label>
+      <label>1日に進める量
+        <input id="dailyAmount" type="number" min="1" placeholder="例：15" />
+      </label>
+      <label>開始日
+        <input id="startDate" type="date" />
+      </label>
+      <label>学習・復習サイクル
+        <select id="cycle">
+          <option value="4-2">4日進める → 2日復習</option>
+        </select>
+      </label>
+    </div>
+    <button style="margin-top:12px" id="addBook">全予定を自動作成</button>
+  </section>
+
+<script>
+const STORAGE_KEY = "study_scheduler_pwa_v1";
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"books":[],"tasks":[]}');
+let calendarCursor = new Date();
+let selectedDate = localDateString();
+let deferredPrompt = null;
+
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function localDateString(date=new Date()){
+  const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function addDays(dateStr, days){
+  const d=new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+days);
+  return localDateString(d);
+}
+function formatRange(unit,start,end){
+  const prefix=unit==="ページ"?"P.":unit;
+  return start===end?`${prefix}${start}`:`${prefix}${start}〜${end}`;
+}
+function generateSchedule(book){
+  let current=book.startNo, dayOffset=0;
+  const tasks=[];
+  while(current<=book.endNo){
+    const blocks=[];
+    for(let i=0;i<4 && current<=book.endNo;i++){
+      const start=current, end=Math.min(current+book.dailyAmount-1,book.endNo);
+      blocks.push({start,end});
+      tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"学習",start,end,done:false});
+      current=end+1;
+    }
+    const fullStart=blocks[0].start, fullEnd=blocks[blocks.length-1].end;
+    const split=fullStart+Math.ceil((fullEnd-fullStart+1)/2)-1;
+    tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"復習",start:fullStart,end:split,done:false});
+    if(split<fullEnd){
+      tasks.push({id:crypto.randomUUID(),bookId:book.id,date:addDays(book.startDate,dayOffset++),type:"復習",start:split+1,end:fullEnd,done:false});
+    }
+  }
+  return tasks;
+}
+function renderTask(task){
+  const book=state.books.find(b=>b.id===task.bookId);
+  if(!book)return "";
+  return `<div class="task ${task.done?"done":""}">
+    <input type="checkbox" ${task.done?"checked":""} onchange="toggleTask('${task.id}')">
+    <div class="task-main">
+      <div class="task-title">${book.name}｜${formatRange(book.unit,task.start,task.end)}
+        <span class="badge">${task.type}</span>
+      </div>
+      <div class="meta">${task.date}・${book.subject}</div>
+    </div>
+  </div>`;
+}
+function render(){
+  const today=localDateString();
+  const todayTasks=state.tasks.filter(t=>t.date===today);
+  const overdue=state.tasks.filter(t=>t.date<today&&!t.done);
+  const upcoming=state.tasks.filter(t=>t.date>today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,90);
+
+  todayCount.textContent=todayTasks.length;
+  overdueCount.textContent=overdue.length;
+  doneCount.textContent=todayTasks.filter(t=>t.done).length;
+  todayTasksEl.innerHTML=todayTasks.length?todayTasks.map(renderTask).join(""):'<div class="empty">今日の予定はありません。</div>';
+  overdueTasks.innerHTML=overdue.length?overdue.map(renderTask).join(""):'<div class="empty">未完了はありません。</div>';
+  upcomingTasks.innerHTML=upcoming.length?upcoming.map(renderTask).join(""):'<div class="empty">今後の予定はありません。</div>';
+
+  bookList.innerHTML=state.books.length?state.books.map(book=>{
+    const tasks=state.tasks.filter(t=>t.bookId===book.id);
+    const done=tasks.filter(t=>t.done).length;
+    const percent=tasks.length?Math.round(done/tasks.length*100):0;
+    return `<div class="book-row">
+      <div class="book-top">
+        <div>
+          <strong>${book.name}</strong>
+          <div class="meta">${book.subject}・${formatRange(book.unit,book.startNo,book.endNo)}・1日${book.dailyAmount}${book.unit}</div>
+          <div class="meta">進捗 ${done}/${tasks.length}（${percent}%）</div>
+        </div>
+        <div class="actions">
+          <button onclick="showBookSchedule('${book.id}')">予定</button>
+          <button onclick="deleteBook('${book.id}')">削除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join(""):'<div class="empty">まだ参考書が登録されていません。</div>';
+
+  renderCalendar();
+  renderSelectedDate();
+  save();
+}
+function renderCalendar(){
+  const y=calendarCursor.getFullYear(), m=calendarCursor.getMonth();
+  calendarTitle.textContent=`${y}年 ${m+1}月`;
+  const first=new Date(y,m,1);
+  const start=new Date(y,m,1-first.getDay());
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i);
+    const ds=localDateString(d);
+    const tasks=state.tasks.filter(t=>t.date===ds);
+    const cls=["day"];
+    if(d.getMonth()!==m)cls.push("out");
+    if(ds===localDateString())cls.push("today");
+    if(ds===selectedDate)cls.push("selected");
+    cells.push(`<div class="${cls.join(" ")}" onclick="selectDate('${ds}')">
+      <div class="date-num">${d.getDate()}</div>
+      <div class="dot-row">${tasks.slice(0,5).map(()=>'<span class="dot"></span>').join("")}</div>
+      ${tasks.length?`<div class="count">${tasks.filter(t=>t.done).length}/${tasks.length}</div>`:""}
+    </div>`);
+  }
+  calendarGrid.innerHTML=cells.join("");
+}
+function renderSelectedDate(){
+  const tasks=state.tasks.filter(t=>t.date===selectedDate);
+  selectedDateTitle.textContent=`${selectedDate} の予定`;
+  selectedDateTasks.innerHTML=tasks.length?tasks.map(renderTask).join(""):'<div class="empty">この日の予定はありません。</div>';
+}
+window.selectDate=function(ds){ selectedDate=ds; renderCalendar(); renderSelectedDate(); };
+window.changeMonth=function(delta){ calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+delta,1); renderCalendar(); };
+window.toggleTask=function(id){ const t=state.tasks.find(t=>t.id===id); if(t)t.done=!t.done; render(); };
+window.deleteBook=function(id){
+  if(!confirm("この参考書と全予定を削除しますか？"))return;
+  state.books=state.books.filter(b=>b.id!==id);
+  state.tasks=state.tasks.filter(t=>t.bookId!==id);
+  render();
+};
+window.showBookSchedule=function(id){
+  const book=state.books.find(b=>b.id===id);
+  const tasks=state.tasks.filter(t=>t.bookId===id).sort((a,b)=>a.date.localeCompare(b.date));
+  showView("upcomingView");
+  document.querySelector("#upcomingView h2").textContent=book.name+" の予定";
+  upcomingTasks.innerHTML=tasks.map(renderTask).join("");
+};
+window.showView=function(id){
+  ["todayView","calendarView","upcomingView","booksView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
+  if(id==="upcomingView"){
+    document.querySelector("#upcomingView h2").textContent="今後の予定";
+    const today=localDateString();
+    const upcoming=state.tasks.filter(t=>t.date>today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,90);
+    upcomingTasks.innerHTML=upcoming.length?upcoming.map(renderTask).join(""):'<div class="empty">今後の予定はありません。</div>';
+  }
+};
+addBook.addEventListener("click",()=>{
+  const name=bookName.value.trim(), subject=document.getElementById("subject").value, unit=document.getElementById("unit").value;
+  const startNo=Number(document.getElementById("startNo").value), endNo=Number(document.getElementById("endNo").value);
+  const dailyAmount=Number(document.getElementById("dailyAmount").value), startDate=document.getElementById("startDate").value;
+  if(!name||!startDate||!startNo||!endNo||!dailyAmount){alert("すべて入力してください。");return;}
+  if(endNo<startNo){alert("終了番号は開始番号以上にしてください。");return;}
+  const book={id:crypto.randomUUID(),name,subject,unit,startNo,endNo,dailyAmount,startDate};
+  state.books.push(book); state.tasks.push(...generateSchedule(book)); save(); render(); showView("todayView");
+  bookName.value=""; document.getElementById("endNo").value=""; document.getElementById("dailyAmount").value="";
+});
+window.exportData=function(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="study-scheduler-backup.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+importFile.addEventListener("change",async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  try{
+    const imported=JSON.parse(await file.text());
+    if(!imported.books||!imported.tasks)throw new Error();
+    state=imported; render(); alert("バックアップを読み込みました。");
+  }catch{alert("読み込めないファイルです。");}
+});
+
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault(); deferredPrompt=e; installButton.classList.remove("hidden");
+});
+installButton.addEventListener("click",async()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  installButton.classList.add("hidden");
+});
+
+const todayTasksEl=document.getElementById("todayTasks");
+document.getElementById("startDate").value=localDateString();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js")); }
+render();
+</script>
+</body>
+</html>
