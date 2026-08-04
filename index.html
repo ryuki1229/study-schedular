@@ -97,11 +97,14 @@ label{display:block;font-size:.88rem}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
 .modal{width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--card);border-radius:18px;padding:16px;box-shadow:0 22px 60px rgba(0,0,0,.25)}
 .modal-actions{display:flex;gap:8px;margin-top:12px}.modal-actions button{flex:1}
+<<<<<<< HEAD
 
 .book-editor-backdrop{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.48)}
 .book-editor{width:min(580px,100%);max-height:90vh;overflow:auto;background:var(--card);color:var(--text);border:1px solid rgba(120,160,210,.3);border-radius:18px;padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
 .book-editor-actions{display:flex;gap:8px;margin-top:12px}.book-editor-actions button{flex:1}
 .book-editor-note{color:var(--muted);font-size:.84rem;margin-bottom:12px}
+=======
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 </style>
 </head>
 <body>
@@ -205,7 +208,7 @@ label{display:block;font-size:.88rem}
 <section class="card hidden" id="addView">
 <h2>参考書を登録</h2>
 <div class="grid">
-<label>参考書名<input id="bookName" placeholder="例：一対一対応 数Ⅲ"></label>
+<label>参考書名<input id="bookName" list="bookSuggestions" placeholder="参考書名を入力"><datalist id="bookSuggestions"></datalist></label>
 <label>科目<select id="subject"><option>数学</option><option>英語</option><option>物理</option><option>化学</option><option>国語</option><option>社会</option><option>情報</option><option>その他</option></select></label>
 <label>単位<select id="unit"><option>ページ</option><option>問題</option><option>講</option><option>Lesson</option><option>No.</option><option>章</option></select></label>
 <label>開始番号<input id="startNo" type="number" value="1" min="1"></label>
@@ -224,7 +227,27 @@ label{display:block;font-size:.88rem}
 
 <script>
 const KEY="study_scheduler_pwa_v1";
+<<<<<<< HEAD
 const DATA_VERSION=2;
+=======
+let state=JSON.parse(localStorage.getItem(KEY)||'{"books":[],"tasks":[],"mistakes":[],"chat":[],"consultations":[]}');
+if(!state.mistakes)state.mistakes=[];
+if(!state.chat)state.chat=[];
+if(!state.consultations)state.consultations=[];
+let selectedDate=localDateString(),calendarCursor=new Date();
+let editingBookId=null;
+
+const BUILTIN_BOOKS=[
+{name:"システム英単語",subject:"英語",unit:"語",end:2027,daily:100,exclude:""},
+{name:"システム英熟語",subject:"英語",unit:"熟語",end:2200,daily:50,exclude:""},
+{name:"一対一対応 数ⅠA",subject:"数学",unit:"問題",end:320,daily:10,exclude:""},
+{name:"一対一対応 数Ⅱ",subject:"数学",unit:"問題",end:310,daily:10,exclude:""},
+{name:"一対一対応 数Ⅲ",subject:"数学",unit:"問題",end:340,daily:8,exclude:""},
+{name:"良問の風",subject:"物理",unit:"問題",end:220,daily:8,exclude:""},
+{name:"名門の森",subject:"物理",unit:"問題",end:180,daily:6,exclude:""}
+];
+
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 
 function createInitialState(){
   return {
@@ -369,7 +392,12 @@ function applyPlanChange(){
  const remaining=getRemainingUnits(b);
  state.tasks=state.tasks.filter(t=>!(t.bookId===b.id&&!t.done&&t.date>=start));
  state.tasks.push(...generateScheduleFromUnits(b,remaining,start,amount));
+<<<<<<< HEAD
  closeEditPlan();render();alert(`今日以降を1日${amount}${b.unit}で組み直しました。`);
+=======
+ closeEditPlan();setupBookAutocomplete();
+render();alert(`今日以降を1日${amount}${b.unit}で組み直しました。`);
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 }
 
 function generateSchedule(book){
@@ -495,6 +523,7 @@ function renderConsultations(){
  }).join(""):'<div class="empty">相談履歴はありません。</div>';
 }
 
+<<<<<<< HEAD
 
 function completedStudyUnits(bookId){
   const units=new Set();
@@ -605,6 +634,8 @@ function applyDailyRollover(){
   save();
 }
 
+=======
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 function render(){
  let today=localDateString();
  let todays=state.tasks.filter(t=>t.date===today),over=state.tasks.filter(t=>t.date<today&&!t.done);
@@ -623,7 +654,11 @@ function render(){
   <div class="progress-track"><div class="progress-fill" style="width:${s.percent}%"></div></div>
   <div><strong>${s.percent}%</strong>・残り${s.remaining}${b.unit}・終了見込み ${s.estimated}</div>
   <div>${statusText(s)}</div><div class="small">${suggestion(b,s)}</div>${b.memo?`<div class="meta">メモ：${esc(b.memo)}</div>`:""}</div>
+<<<<<<< HEAD
   <div class="actions"><button onclick="openBookEditor('${b.id}')">参考書編集</button><button onclick="openEditPlan('${b.id}')">計画変更</button><button onclick="editBook('${b.id}')">メモ編集</button><button onclick="showBook('${b.id}')">予定</button><button onclick="deleteBook('${b.id}')">削除</button></div></div></div>`;
+=======
+  <div class="actions"><button onclick="openEditPlan('${b.id}')">計画変更</button><button onclick="editBook('${b.id}')">メモ編集</button><button onclick="showBook('${b.id}')">予定</button><button onclick="deleteBook('${b.id}')">削除</button></div></div></div>`;
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
  }).join(""):'<div class="empty">参考書は未登録です。</div>';
 
  mistakeBook.innerHTML='<option value="">参考書を選択</option>'+state.books.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
@@ -719,8 +754,28 @@ if(!state.consultations)state.consultations=[];render();alert("読み込みま�
  const el=document.getElementById(id);if(el){el.addEventListener("input",updateEditPlanPreview);el.addEventListener("change",updateEditPlanPreview)}
 });
 editPlanModal.addEventListener("click",e=>{if(e.target===editPlanModal)closeEditPlan()});
+<<<<<<< HEAD
 bookEditorBackdrop.addEventListener("click",e=>{if(e.target===bookEditorBackdrop)closeBookEditor()});
+=======
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 startDate.value=localDateString();mistakeReview.value=addDays(localDateString(),3);
+
+function setupBookAutocomplete(){
+ const dl=document.getElementById("bookSuggestions");
+ if(!dl)return;
+ dl.innerHTML=BUILTIN_BOOKS.map(b=>`<option value="${b.name}">`).join("");
+ const inp=document.getElementById("bookName");
+ inp.addEventListener("change",()=>{
+   const b=BUILTIN_BOOKS.find(x=>x.name===inp.value);
+   if(!b)return;
+   subject.value=b.subject;
+   unit.value=b.unit;
+   endNo.value=b.end;
+   dailyAmount.value=b.daily;
+   if(document.getElementById("excludedRanges")) excludedRanges.value=b.exclude;
+ });
+}
+
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
 applyDailyRollover();
 render();
@@ -739,6 +794,7 @@ render();
 <div id="editPlanPreview" class="card"></div>
 <div class="modal-actions"><button onclick="closeEditPlan()">キャンセル</button><button class="primary" onclick="applyPlanChange()">予定を組み直す</button></div>
 </div></div>
+<<<<<<< HEAD
 
 <div id="bookEditorBackdrop" class="book-editor-backdrop hidden">
   <div class="book-editor">
@@ -767,5 +823,7 @@ render();
   </div>
 </div>
 
+=======
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
 </body>
 </html>
