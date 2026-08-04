@@ -773,26 +773,60 @@ importFile.addEventListener("change",async e=>{
   }
 })
 
-["editDailyAmount","editTargetDate","editPlanStartDate","editPlanMode"].forEach(id=>{
- const el=document.getElementById(id);if(el){el.addEventListener("input",updateEditPlanPreview);el.addEventListener("change",updateEditPlanPreview)}
-});
-editPlanModal.addEventListener("click",e=>{if(e.target===editPlanModal)closeEditPlan()});
-bookEditorBackdrop.addEventListener("click",e=>{if(e.target===bookEditorBackdrop)closeBookEditor()});
-startDate.value=localDateString();mistakeReview.value=addDays(localDateString(),3);
-if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
-applyDailyRollover();
-window.addEventListener("pageshow",()=>{
+window.addEventListener("DOMContentLoaded",()=>{
+  ["editDailyAmount","editTargetDate","editPlanStartDate","editPlanMode"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      el.addEventListener("input",updateEditPlanPreview);
+      el.addEventListener("change",updateEditPlanPreview);
+    }
+  });
+
+  const planModal=document.getElementById("editPlanModal");
+  if(planModal){
+    planModal.addEventListener("click",event=>{
+      if(event.target===planModal)closeEditPlan();
+    });
+  }
+
+  const editorBackdrop=document.getElementById("bookEditorBackdrop");
+  if(editorBackdrop){
+    editorBackdrop.addEventListener("click",event=>{
+      if(event.target===editorBackdrop)closeBookEditor();
+    });
+  }
+
+  const startInput=document.getElementById("startDate");
+  if(startInput)startInput.value=localDateString();
+
+  const reviewInput=document.getElementById("mistakeReview");
+  if(reviewInput)reviewInput.value=addDays(localDateString(),3);
+
   state=loadState();
   applyDailyRollover();
   render();
 });
+
+window.addEventListener("pageshow",event=>{
+  if(event.persisted){
+    state=loadState();
+    applyDailyRollover();
+    render();
+  }
+});
+
 window.addEventListener("storage",event=>{
   if(event.key===KEY){
     state=loadState();
     render();
   }
 });
-render();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("service-worker.js");
+  });
+}
 </script>
 
 <div id="editPlanModal" class="modal-backdrop hidden">
