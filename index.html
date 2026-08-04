@@ -142,6 +142,7 @@ label{display:block;font-size:.88rem}
 
 <section class="card hidden" id="booksView">
 <h2>参考書と終了見込み</h2>
+<div id="storageStatus" class="meta" style="margin-bottom:8px"></div>
 <div id="bookList"></div>
 <div class="toolbar" style="margin-top:12px">
 <button onclick="exportData()">バックアップ保存</button>
@@ -224,7 +225,8 @@ label{display:block;font-size:.88rem}
 
 <script>
 const KEY="study_scheduler_pwa_v1";
-const DATA_VERSION=2;
+const LEGACY_KEYS=["study_scheduler_pwa_v1","route_state","route_books"];
+const DATA_VERSION=3;
 
 function createInitialState(){
   return {
@@ -238,26 +240,36 @@ function createInitialState(){
   };
 }
 
+function normalizeState(parsed){
+  return {
+    ...createInitialState(),
+    ...(parsed||{}),
+    version:DATA_VERSION,
+    books:Array.isArray(parsed?.books)?parsed.books:[],
+    tasks:Array.isArray(parsed?.tasks)?parsed.tasks:[],
+    mistakes:Array.isArray(parsed?.mistakes)?parsed.mistakes:[],
+    chat:Array.isArray(parsed?.chat)?parsed.chat:[],
+    consultations:Array.isArray(parsed?.consultations)?parsed.consultations:[],
+    settings:{...createInitialState().settings,...(parsed?.settings||{})}
+  };
+}
+
 function loadState(){
-  try{
-    const raw=localStorage.getItem(KEY);
-    if(!raw)return createInitialState();
-    const parsed=JSON.parse(raw);
-    return {
-      ...createInitialState(),
-      ...parsed,
-      version:DATA_VERSION,
-      books:Array.isArray(parsed.books)?parsed.books:[],
-      tasks:Array.isArray(parsed.tasks)?parsed.tasks:[],
-      mistakes:Array.isArray(parsed.mistakes)?parsed.mistakes:[],
-      chat:Array.isArray(parsed.chat)?parsed.chat:[],
-      consultations:Array.isArray(parsed.consultations)?parsed.consultations:[],
-      settings:{...createInitialState().settings,...(parsed.settings||{})}
-    };
-  }catch(error){
-    console.error("Route data load failed",error);
-    return createInitialState();
+  for(const key of LEGACY_KEYS){
+    try{
+      const raw=localStorage.getItem(key);
+      if(!raw)continue;
+      const parsed=JSON.parse(raw);
+      const normalized=normalizeState(parsed);
+
+      // 旧キーから読み込んだ場合も現在のキーへ移行
+      localStorage.setItem(KEY,JSON.stringify(normalized));
+      return normalized;
+    }catch(error){
+      console.warn(`Route data load failed: ${key}`,error);
+    }
   }
+  return createInitialState();
 }
 
 let state=loadState();
@@ -267,10 +279,19 @@ let editingBookId=null;
 function save(){
   try{
     state.version=DATA_VERSION;
-    localStorage.setItem(KEY,JSON.stringify(state));
+    const serialized=JSON.stringify(state);
+    localStorage.setItem(KEY,serialized);
+    localStorage.setItem(KEY+"_backup",serialized);
+
+    // 書き込み確認
+    if(localStorage.getItem(KEY)!==serialized){
+      throw new Error("localStorage verification failed");
+    }
+    return true;
   }catch(error){
     console.error("Route data save failed",error);
-    alert("データを保存できませんでした。バックアップを保存してください。");
+    alert("データを保存できませんでした。ブラウザのサイトデータ容量やプライベートモードを確認してください。");
+    return false;
   }
 }
 function localDateString(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -369,7 +390,7 @@ function applyPlanChange(){
  const remaining=getRemainingUnits(b);
  state.tasks=state.tasks.filter(t=>!(t.bookId===b.id&&!t.done&&t.date>=start));
  state.tasks.push(...generateScheduleFromUnits(b,remaining,start,amount));
- closeEditPlan();render();alert(`今日以降を1日${amount}${b.unit}で組み直しました。`);
+ closeEditPlan();save();render();alert(`今日以降を1日${amount}${b.unit}で組み直しました。`);
 }
 
 function generateSchedule(book){
@@ -567,6 +588,7 @@ window.saveBookEditor=()=>{
   Object.assign(b,values);
   if(scheduleChanged&&editBookRebuild.checked)rebuildBookUnfinishedTasks(b);
   closeBookEditor();
+  save();
   render();
   alert(scheduleChanged&&editBookRebuild.checked?"参考書を更新し、未完了予定を作り直しました。":"参考書を更新しました。");
 };
@@ -606,6 +628,9 @@ function applyDailyRollover(){
 }
 
 function render(){
+ if(typeof storageStatus!=="undefined"){
+   storageStatus.textContent=`端末保存：${state.books.length}冊・最終保存 ${new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`;
+ }
  let today=localDateString();
  let todays=state.tasks.filter(t=>t.date===today),over=state.tasks.filter(t=>t.date<today&&!t.done);
  let done=todays.filter(t=>t.done).length,rate=todays.length?Math.round(done/todays.length*100):0;
@@ -666,13 +691,24 @@ function advisorAnswer(q){
 window.showView=id=>["todayView","calendarView","booksView","mistakesView","advisorView","humanConsultView","addView"].forEach(v=>document.getElementById(v).classList.toggle("hidden",v!==id));
 window.changeMonth=n=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+n,1);renderCalendar()}
 window.selectDate=s=>{selectedDate=s;renderCalendar();renderSelectedDate()}
-window.toggleTask=id=>{let t=state.tasks.find(x=>x.id===id);if(t)t.done=!t.done;render()}
-window.editTaskNote=id=>{let t=state.tasks.find(x=>x.id===id);let n=prompt("この学習のメモ",t.note||"");if(n!==null){t.note=n;render()}}
+window.toggleTask=id=>{
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t)return;
+  t.done=!t.done;
+  save();
+  render();
+}
+window.editTaskNote=id=>{let t=state.tasks.find(x=>x.id===id);let n=prompt("この学習のメモ",t.note||"");if(n!==null){t.note=n;save();render()}}
 window.addBook=()=>{
  let name=bookName.value.trim(),start=+startNo.value,end=+endNo.value,amt=+dailyAmount.value,sd=startDate.value;
  if(!name||!start||!end||!amt||!sd)return alert("必須項目を入力してください。");
  let b={id:crypto.randomUUID(),name,subject:subject.value,unit:unit.value,startNo:start,endNo:end,dailyAmount:amt,startDate:sd,targetDate:targetDate.value,excludedRanges:excludedRanges.value.trim(),memo:bookMemo.value.trim()};
- state.books.push(b);state.tasks.push(...generateSchedule(b));excludedRanges.value="";render();showView("todayView");
+ state.books.push(b);
+  state.tasks.push(...generateSchedule(b));
+  excludedRanges.value="";
+  save();
+  render();
+  showView("todayView");
 }
 window.editBook=id=>{
  let b=state.books.find(x=>x.id===id);
@@ -691,15 +727,22 @@ window.editBook=id=>{
  render();
 }
 window.showBook=id=>{let b=state.books.find(x=>x.id===id),ts=state.tasks.filter(t=>t.bookId===id);selectedDateTasks.innerHTML=ts.map(renderTask).join("");selectedDateTitle.textContent=b.name+" の全予定";showView("calendarView")}
-window.deleteBook=id=>{if(!confirm("参考書と予定を削除しますか？"))return;state.books=state.books.filter(b=>b.id!==id);state.tasks=state.tasks.filter(t=>t.bookId!==id);state.mistakes=state.mistakes.filter(m=>m.bookId!==id);render()}
+window.deleteBook=id=>{
+  if(!confirm("参考書と予定を削除しますか？"))return;
+  state.books=state.books.filter(b=>b.id!==id);
+  state.tasks=state.tasks.filter(t=>t.bookId!==id);
+  state.mistakes=state.mistakes.filter(m=>m.bookId!==id);
+  save();
+  render();
+}
 window.addMistake=()=>{
  if(!mistakeBook.value||!mistakeProblem.value.trim())return alert("参考書と問題番号を入力してください。");
  state.mistakes.unshift({id:crypto.randomUUID(),bookId:mistakeBook.value,problem:mistakeProblem.value.trim(),topic:mistakeTopic.value.trim()||"未分類",reason:mistakeReason.value,priority:mistakePriority.value,reviewDate:mistakeReview.value||addDays(localDateString(),3),memo:mistakeMemo.value.trim(),mastered:false});
- mistakeProblem.value="";mistakeTopic.value="";mistakeMemo.value="";render();
+ mistakeProblem.value="";mistakeTopic.value="";mistakeMemo.value="";save();render();
 }
-window.masterMistake=id=>{let m=state.mistakes.find(x=>x.id===id);m.mastered=!m.mastered;render()}
-window.deleteMistake=id=>{state.mistakes=state.mistakes.filter(x=>x.id!==id);render()}
-window.askAdvisor=()=>{let q=advisorInput.value.trim();if(!q)return;state.chat.push({role:"user",text:q},{role:"assistant",text:advisorAnswer(q)});advisorInput.value="";render()}
+window.masterMistake=id=>{let m=state.mistakes.find(x=>x.id===id);m.mastered=!m.mastered;save();render()}
+window.deleteMistake=id=>{state.mistakes=state.mistakes.filter(x=>x.id!==id);save();render()}
+window.askAdvisor=()=>{let q=advisorInput.value.trim();if(!q)return;state.chat.push({role:"user",text:q},{role:"assistant",text:advisorAnswer(q)});advisorInput.value="";save();render()}
 window.quickAsk=q=>{advisorInput.value=q;askAdvisor()}
 
 window.submitConsultation=async()=>{
@@ -707,13 +750,28 @@ window.submitConsultation=async()=>{
  const text=consultText.value.trim();if(!text)return alert("相談内容を入力してください。");
  let image="";try{image=await compressImageFile(consultImage.files[0])}catch{return alert("画像の読み込みに失敗しました。")}
  const d={id:crypto.randomUUID(),createdDate:localDateString(),createdAt:new Date().toISOString(),subject:consultSubject.value,bookId:consultBook.value,problemLabel:formatProblemNumber(consultMajor.value.trim(),consultMiddle.value.trim(),consultMinor.value.trim(),consultBranch.value.trim()),text,image,status:"未送信（端末保存）"};
- d.aiSummary=buildConsultAiSummary(d);state.consultations.unshift(d);consultText.value="";consultImage.value="";consultPreview.innerHTML="";render();alert("相談を保存しました。");
+ d.aiSummary=buildConsultAiSummary(d);state.consultations.unshift(d);consultText.value="";consultImage.value="";consultPreview.innerHTML="";save();render();alert("相談を保存しました。");
 }
 consultImage.addEventListener("change",async()=>{const f=consultImage.files[0];if(!f){consultPreview.innerHTML="";return}try{const s=await compressImageFile(f,700,.65);consultPreview.innerHTML=`<img src="${s}" style="max-width:100%;max-height:220px;border-radius:12px">`}catch{}});
 
 window.exportData=()=>{let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="route-backup.json";a.click();URL.revokeObjectURL(a.href)}
-importFile.addEventListener("change",async e=>{try{let x=JSON.parse(await e.target.files[0].text());state=x;if(!state.mistakes)state.mistakes=[];if(!state.chat)state.chat=[];
-if(!state.consultations)state.consultations=[];render();alert("読み込みました。")}catch{alert("読み込めませんでした。")}})
+importFile.addEventListener("change",async e=>{
+  try{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const imported=JSON.parse(await file.text());
+    state=normalizeState(imported);
+    save();
+    applyDailyRollover();
+    render();
+    alert("バックアップを読み込みました。");
+  }catch(error){
+    console.error(error);
+    alert("バックアップを読み込めませんでした。");
+  }finally{
+    e.target.value="";
+  }
+})
 
 ["editDailyAmount","editTargetDate","editPlanStartDate","editPlanMode"].forEach(id=>{
  const el=document.getElementById(id);if(el){el.addEventListener("input",updateEditPlanPreview);el.addEventListener("change",updateEditPlanPreview)}
@@ -723,6 +781,17 @@ bookEditorBackdrop.addEventListener("click",e=>{if(e.target===bookEditorBackdrop
 startDate.value=localDateString();mistakeReview.value=addDays(localDateString(),3);
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
 applyDailyRollover();
+window.addEventListener("pageshow",()=>{
+  state=loadState();
+  applyDailyRollover();
+  render();
+});
+window.addEventListener("storage",event=>{
+  if(event.key===KEY){
+    state=loadState();
+    render();
+  }
+});
 render();
 </script>
 

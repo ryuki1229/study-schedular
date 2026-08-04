@@ -1,7 +1,11 @@
 {
   "name": "Route - 学習ルート管理",
   "short_name": "Route",
+<<<<<<< HEAD
   "description": "Ver.1.8を基準に参考書編集、保存強化、未完了範囲の翌日繰り越しを追加",
+=======
+  "description": "参考書の1日量や目標日を途中変更し、未完了予定を自動再編成",
+>>>>>>> 96964ed02ae4db9fca60a6e9ab7837ebddc26565
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
