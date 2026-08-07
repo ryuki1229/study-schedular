@@ -102,6 +102,15 @@ label{display:block;font-size:.88rem}
 .book-editor{width:min(580px,100%);max-height:90vh;overflow:auto;background:var(--card);color:var(--text);border:1px solid rgba(120,160,210,.3);border-radius:18px;padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
 .book-editor-actions{display:flex;gap:8px;margin-top:12px}.book-editor-actions button{flex:1}
 .book-editor-note{color:var(--muted);font-size:.84rem;margin-bottom:12px}
+
+.progress-entry-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.48)}
+.progress-entry-modal{width:min(480px,100%);max-height:90vh;overflow:auto;padding:18px;border:1px solid rgba(120,160,210,.30);border-radius:18px;background:var(--card);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.progress-entry-summary{margin:10px 0;padding:12px;border-radius:13px;background:rgba(22,137,245,.10);line-height:1.6}
+.progress-entry-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.progress-entry-actions .wide{grid-column:1/-1}
+.task-action-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.task-action-row button{width:auto;padding:6px 9px;font-size:.78rem}
+
 </style>
 </head>
 <body>
@@ -226,7 +235,7 @@ label{display:block;font-size:.88rem}
 <script>
 const KEY="study_scheduler_pwa_v1";
 const LEGACY_KEYS=["study_scheduler_pwa_v1","route_state","route_books"];
-const DATA_VERSION=3;
+const DATA_VERSION=4;
 
 function createInitialState(){
   return {
@@ -462,7 +471,10 @@ function renderTask(t){
  <input type="checkbox" ${t.done?"checked":""} onchange="toggleTask('${t.id}')">
  <div class="task-main"><div class="task-title">${esc(b.name)}｜${formatTaskRange(b,t)}<span class="badge">${t.type}</span></div>
  <div class="meta">${t.date}・${b.subject}${t.note?"・"+esc(t.note):""}</div>
- <button class="small" style="width:auto;margin-top:5px" onclick="editTaskNote('${t.id}')">メモ</button></div></div>`;
+ <div class="task-action-row">
+  ${!t.done&&t.type==="学習"?`<button class="primary" onclick="openProgressEntry('${t.id}')">実績入力</button>`:""}
+  <button onclick="editTaskNote('${t.id}')">メモ</button>
+  </div></div></div>`;
 }
 function renderMistake(m){
  let b=state.books.find(x=>x.id===m.bookId);
@@ -626,6 +638,170 @@ function applyDailyRollover(){
   state.settings.lastRolloverDate=today;
   save();
 }
+
+
+function taskUnits(task){
+  if(Array.isArray(task.units)&&task.units.length)return [...task.units];
+  const units=[];
+  for(let number=Number(task.start);number<=Number(task.end);number++)units.push(number);
+  return units;
+}
+
+function nextDay(){
+  return addDays(localDateString(),1);
+}
+
+function rebuildFutureFromRemaining(book,startDate){
+  const remaining=getRemainingUnits(book);
+  state.tasks=state.tasks.filter(task=>task.bookId!==book.id||task.done);
+
+  if(remaining.length){
+    state.tasks.push(
+      ...generateScheduleFromUnits(
+        book,
+        remaining,
+        startDate,
+        Math.max(1,Number(book.dailyAmount)||1)
+      )
+    );
+  }
+  sortAllTasks();
+}
+
+function actualProgressPreview(task,completedThrough){
+  const book=state.books.find(item=>item.id===task.bookId);
+  if(!book)return "";
+
+  const units=taskUnits(task);
+  const completed=units.filter(number=>number<=completedThrough);
+  const remaining=units.filter(number=>number>completedThrough);
+
+  if(!completed.length){
+    return `今日は未完了として、${formatTaskRange(book,task)}を明日へ繰り越します。`;
+  }
+
+  if(!remaining.length){
+    return `${formatTaskRange(book,task)}をすべて完了として記録します。`;
+  }
+
+  const completedText=compressUnits(completed)
+    .map(range=>formatRange(book.unit,range.start,range.end))
+    .join("・");
+  const remainingText=compressUnits(remaining)
+    .map(range=>formatRange(book.unit,range.start,range.end))
+    .join("・");
+
+  return `完了：${completedText}<br>未完了：${remainingText}<br>残りと未来の予定を明日から組み直します。`;
+}
+
+window.openProgressEntry=id=>{
+  const task=state.tasks.find(item=>item.id===id);
+  if(!task||task.done)return;
+
+  const book=state.books.find(item=>item.id===task.bookId);
+  if(!book)return;
+
+  editingProgressTaskId=id;
+  const units=taskUnits(task);
+
+  progressEntryBook.textContent=`${book.name}｜${task.type}`;
+  progressEntryPlanned.innerHTML=
+    `今日の予定：<strong>${formatTaskRange(book,task)}</strong><br>`+
+    `現在の終了見込み：${getBookStats(book).estimated}`;
+
+  progressEntryNumber.min=String(units[0]??task.start);
+  progressEntryNumber.max=String(units.at(-1)??task.end);
+  progressEntryNumber.value=String(units.at(-1)??task.end);
+  progressEntryPreview.innerHTML=actualProgressPreview(task,Number(progressEntryNumber.value));
+
+  progressEntryBackdrop.classList.remove("hidden");
+  setTimeout(()=>progressEntryNumber.focus(),50);
+};
+
+window.closeProgressEntry=()=>{
+  progressEntryBackdrop.classList.add("hidden");
+  editingProgressTaskId=null;
+};
+
+window.updateProgressEntryPreview=()=>{
+  const task=state.tasks.find(item=>item.id===editingProgressTaskId);
+  if(!task)return;
+  progressEntryPreview.innerHTML=actualProgressPreview(task,Number(progressEntryNumber.value));
+};
+
+window.saveNoProgressToday=()=>{
+  const task=state.tasks.find(item=>item.id===editingProgressTaskId);
+  if(!task)return;
+  const book=state.books.find(item=>item.id===task.bookId);
+  if(!book)return;
+
+  const rangeText=formatTaskRange(book,task);
+  rebuildFutureFromRemaining(book,nextDay());
+  closeProgressEntry();
+  save();
+  render();
+
+  alert(
+    `今日は未完了として記録しました。\n`+
+    `${rangeText}から明日再開します。\n`+
+    `新しい終了見込み：${getBookStats(book).estimated}`
+  );
+};
+
+window.saveActualProgress=()=>{
+  const task=state.tasks.find(item=>item.id===editingProgressTaskId);
+  if(!task)return;
+  const book=state.books.find(item=>item.id===task.bookId);
+  if(!book)return;
+
+  const units=taskUnits(task);
+  const minimum=units[0];
+  const maximum=units.at(-1);
+  const completedThrough=Number(progressEntryNumber.value);
+
+  if(!Number.isFinite(completedThrough)){
+    alert("実際に終わった番号を入力してください。");
+    return;
+  }
+  if(completedThrough<minimum){
+    saveNoProgressToday();
+    return;
+  }
+  if(completedThrough>maximum){
+    alert(`今日の予定範囲内（${minimum}〜${maximum}）で入力してください。`);
+    return;
+  }
+
+  const completedUnits=units.filter(number=>number<=completedThrough);
+  const remainingToday=units.filter(number=>number>completedThrough);
+  const plannedText=formatRange(book.unit,minimum,maximum);
+
+  task.units=completedUnits;
+  task.start=completedUnits[0];
+  task.end=completedUnits.at(-1);
+  task.done=true;
+  task.note=[
+    task.note,
+    `実績入力：予定${plannedText}のうち${formatRange(book.unit,task.start,task.end)}まで完了`
+  ].filter(Boolean).join("・");
+
+  if(remainingToday.length){
+    rebuildFutureFromRemaining(book,nextDay());
+  }else{
+    sortAllTasks();
+  }
+
+  closeProgressEntry();
+  save();
+  render();
+
+  const stats=getBookStats(book);
+  alert(
+    remainingToday.length
+      ? `実績を保存しました。\n残りは${formatRange(book.unit,remainingToday[0],remainingToday.at(-1))}から明日再開します。\n新しい終了見込み：${stats.estimated}`
+      : `今日の予定を完了しました。\n次の範囲へ進みます。\n終了見込み：${stats.estimated}`
+  );
+};
 
 function render(){
  if(typeof storageStatus!=="undefined"){
@@ -802,6 +978,16 @@ window.addEventListener("DOMContentLoaded",()=>{
   const reviewInput=document.getElementById("mistakeReview");
   if(reviewInput)reviewInput.value=addDays(localDateString(),3);
 
+  const progressNumber=document.getElementById("progressEntryNumber");
+  if(progressNumber)progressNumber.addEventListener("input",updateProgressEntryPreview);
+
+  const progressBackdrop=document.getElementById("progressEntryBackdrop");
+  if(progressBackdrop){
+    progressBackdrop.addEventListener("click",event=>{
+      if(event.target===progressBackdrop)closeProgressEntry();
+    });
+  }
+
   state=loadState();
   applyDailyRollover();
   render();
@@ -866,6 +1052,29 @@ if("serviceWorker" in navigator){
     <div class="book-editor-actions">
       <button type="button" onclick="closeBookEditor()">キャンセル</button>
       <button type="button" class="primary" onclick="saveBookEditor()">変更を保存</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="progressEntryBackdrop" class="progress-entry-backdrop hidden">
+  <div class="progress-entry-modal">
+    <h2>今日の実績を入力</h2>
+    <div id="progressEntryBook" style="font-weight:800"></div>
+    <div id="progressEntryPlanned" class="progress-entry-summary"></div>
+
+    <label>
+      実際に終わった最後の番号
+      <input id="progressEntryNumber" type="number" min="1" inputmode="numeric">
+      <span class="meta">例：予定が1〜20で12まで終わった場合は「12」</span>
+    </label>
+
+    <div id="progressEntryPreview" class="progress-entry-summary"></div>
+
+    <div class="progress-entry-actions">
+      <button type="button" onclick="closeProgressEntry()">キャンセル</button>
+      <button type="button" class="primary" onclick="saveActualProgress()">実績を保存</button>
+      <button type="button" class="wide" onclick="saveNoProgressToday()">今日は進めなかった</button>
     </div>
   </div>
 </div>
